@@ -9,13 +9,16 @@ public static void main(String[] args)throws Exception{
     int n=1;
     int check=0;
     String  str;
+    Split sentence = new Split();
     while((str=filereader.readLine())!=null){
-        Split sentence = new Split();
         sentence.setSentence(str,check);
         sentence.output();
         check=sentence.getCheck();
     }
+    VocabularyMain vocabulary = new VocabularyMain(sentence.getBank());
+    vocabulary.analyze();
     filereader.close();
+//    sentence.checkBank();
 }
 
 

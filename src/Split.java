@@ -1,8 +1,10 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Split{
     String Sentence;
     char letter[];
+    public ArrayList<String> bank=new ArrayList<>();
     String word="";
     int check;
     HashMap <Character,String> SingleCharacter = new HashMap<Character,String>();
@@ -27,6 +29,7 @@ public class Split{
             WordCheck w = new WordCheck();
             w.setWord(word);
             w.output();
+            bank.add(word);
             word="";
         }
     }
@@ -54,23 +57,27 @@ public class Split{
                 }
                 else if(SingleCharacter.containsKey(letter[i])){
                     wordcheck();
-                    System.out.println(SingleCharacter.get(letter[i])+" "+letter[i]);
+                    //System.out.println(SingleCharacter.get(letter[i])+" "+letter[i]);
+                    bank.add(String.valueOf(letter[i]));
                 }
                 else if(letter[i]=='!'){
                     if(i==letter.length-1||letter[i+1]!='='){
                         wordcheck();
-                        System.out.println("NOT !");
+                        //System.out.println("NOT !");
+                        bank.add("!");
                     }
                     else{
                         wordcheck();
-                        System.out.println("NEQ !=");
+                        //System.out.println("NEQ !=");
                         i+=1;
+                        bank.add("!=");
                     }
                 }
                 else if(letter[i]=='/'){
                     if(i==letter.length-1||letter[i+1]!='/'&&letter[i+1]!='*'){
                         wordcheck();
-                        System.out.println("DIV /");
+                        //System.out.println("DIV /");
+                        bank.add("/");
                     }
                     else{
                         wordcheck();
@@ -86,48 +93,56 @@ public class Split{
                 else if(letter[i]=='<'){
                     if(i==letter.length-1||letter[i+1]!='='){
                         wordcheck();
-                        System.out.println("LSS <");
+                        bank.add("<");
+                        //System.out.println("LSS <");
                     }
                     else{
                         wordcheck();
-                        System.out.println("LEQ <=");
+                       // System.out.println("LEQ <=");
                         i+=1;
+                        bank.add("<=");
                     }
                 }
                 else if(letter[i]=='>'){
                     if(i==letter.length-1||letter[i+1]!='='){
                         wordcheck();
-                        System.out.println("GRE >");
+                       // System.out.println("GRE >");
+                        bank.add(">");
                     }
                     else{
                         wordcheck();
-                        System.out.println("GEQ >=");
+                       //System.out.println("GEQ >=");
                         i+=1;
+                        bank.add(">=");
                     }
                 }
                 else if(letter[i]=='='){
                     if(i==letter.length-1||letter[i+1]!='='){
                         wordcheck();
-                        System.out.println("ASSIGN =");
+                        //System.out.println("ASSIGN =");
+                        bank.add("=");
                     }
                     else{
                         wordcheck();
-                        System.out.println("EQL ==");
+                        //System.out.println("EQL ==");
                         i+=1;
+                        bank.add("==");
                     }
                 }
                 else if(letter[i]=='&'){
                     if(letter[i+1]=='&'){
                         wordcheck();
-                        System.out.println("AND &&");
+                        //System.out.println("AND &&");
                         i+=1;
+                        bank.add("&&");
                     }
                 }
                 else if(letter[i]=='|'){
                     if(letter[i+1]=='|'){
                         wordcheck();
-                        System.out.println("OR ||");
+                        //System.out.println("OR ||");
                         i+=1;
+                        bank.add("||");
                     }
                 }
                 else if(letter[i]=='"'){
@@ -137,8 +152,10 @@ public class Split{
                         word=word+letter[i];
                         i+=1;
                     }
-                    System.out.println("STRCON \""+word+"\"");
+                    //System.out.println("STRCON \""+word+"\"");
+                    bank.add("\""+word+"\"");
                     word="";
+
                 }
                 else{
                     word=word+letter[i];
@@ -146,5 +163,14 @@ public class Split{
             }
         }
         wordcheck();
+    }
+    public void checkBank(){
+        for(int i=0;i<bank.size();i++){
+            System.out.println(bank.get(i));
+        }
+    }
+
+    public ArrayList<String> getBank(){
+        return bank;
     }
 }

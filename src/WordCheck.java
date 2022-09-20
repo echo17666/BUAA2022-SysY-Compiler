@@ -23,17 +23,17 @@ public class WordCheck{
 
     public void output(){
             if(ReservedWords.containsKey(word)){
-                System.out.println(ReservedWords.get(word)+" "+word);
+                //System.out.println(ReservedWords.get(word)+" "+word);
             }
             else{
                 char letter[]=word.toCharArray();
                 if(letter[0]>='0'&&letter[0]<='9'){
                     if(isNumber(word)){
-                        System.out.println("INTCON "+word);
+                       // System.out.println("INTCON "+word);
                     }
                 }
                 else{
-                    System.out.println("IDENFR "+word);
+                    //System.out.println("IDENFR "+word);
                 }
             }
         }
