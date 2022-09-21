@@ -1,16 +1,25 @@
+package Lexical;
+
+import Datam.Token;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Split{
     String Sentence;
     char letter[];
-    public ArrayList<String> bank=new ArrayList<>();
+    Integer lineNumber;
+    public ArrayList<Token> bank=new ArrayList<>();
     String word="";
     int check;
+    int startCharacter;
+    int now;
     HashMap <Character,String> SingleCharacter = new HashMap<Character,String>();
-    public void setSentence(String sentence,int check){
+    public void setSentence(String sentence,int check,int n){
         this.Sentence=sentence;
         this.check=check;
+        this.startCharacter=0;
+        this.lineNumber=n;
         SingleCharacter.put('+',"PLUS");
         SingleCharacter.put('-',"MINU");
         SingleCharacter.put('*',"MULT");
@@ -27,12 +36,15 @@ public class Split{
     public void wordcheck(){
         if(word!=""){
             WordCheck w = new WordCheck();
+            Token t = new Token(word,lineNumber,this.startCharacter);
             w.setWord(word);
             w.output();
-            bank.add(word);
+            bank.add(t);
             word="";
+            this.startCharacter=this.now;
         }
     }
+
 
     public int getCheck(){
         return this.check;
@@ -45,7 +57,6 @@ public class Split{
                 if(i==letter.length-1||!(letter[i]=='*'&&letter[i+1]=='/')){
                    continue;
                 }
-
                 else{
                     i=i+1;
                     this.check=0;
@@ -53,31 +64,44 @@ public class Split{
             }
             else{
                 if(letter[i]==' '||letter[i]=='\n'||letter[i]=='\r'||letter[i]=='\t'){
+                    now=i+1;
                     wordcheck();
                 }
                 else if(SingleCharacter.containsKey(letter[i])){
+                    now=i;
                     wordcheck();
                     //System.out.println(SingleCharacter.get(letter[i])+" "+letter[i]);
-                    bank.add(String.valueOf(letter[i]));
+                    Token t = new Token(String.valueOf(letter[i]),lineNumber,this.startCharacter);
+                    bank.add(t);
+                    this.startCharacter=i+1;
                 }
                 else if(letter[i]=='!'){
                     if(i==letter.length-1||letter[i+1]!='='){
+                        now=i;
                         wordcheck();
+                        Token t = new Token("!",lineNumber,this.startCharacter);
                         //System.out.println("NOT !");
-                        bank.add("!");
+                        bank.add(t);
+                        this.startCharacter=i+1;
                     }
                     else{
+                        now=i;
                         wordcheck();
+                        Token t = new Token("!=",lineNumber,this.startCharacter);
                         //System.out.println("NEQ !=");
+                        this.startCharacter=i+2;
                         i+=1;
-                        bank.add("!=");
+                        bank.add(t);
                     }
                 }
                 else if(letter[i]=='/'){
                     if(i==letter.length-1||letter[i+1]!='/'&&letter[i+1]!='*'){
+                        now=i;
                         wordcheck();
+                        Token t = new Token("/",lineNumber,this.startCharacter);
                         //System.out.println("DIV /");
-                        bank.add("/");
+                        bank.add(t);
+                        this.startCharacter=i+1;
                     }
                     else{
                         wordcheck();
@@ -92,60 +116,90 @@ public class Split{
                 }
                 else if(letter[i]=='<'){
                     if(i==letter.length-1||letter[i+1]!='='){
+                        now=i;
                         wordcheck();
-                        bank.add("<");
+                        Token t = new Token("<",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+1;
                         //System.out.println("LSS <");
                     }
                     else{
+                        now=i;
                         wordcheck();
+                        Token t = new Token("<=",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+2;
                        // System.out.println("LEQ <=");
                         i+=1;
-                        bank.add("<=");
+
                     }
                 }
                 else if(letter[i]=='>'){
                     if(i==letter.length-1||letter[i+1]!='='){
+                        now=i;
                         wordcheck();
+                        Token t = new Token(">",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+1;
+
                        // System.out.println("GRE >");
-                        bank.add(">");
+
                     }
                     else{
+                        now=i;
                         wordcheck();
+                        Token t = new Token(">=",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+2;
                        //System.out.println("GEQ >=");
                         i+=1;
-                        bank.add(">=");
                     }
                 }
                 else if(letter[i]=='='){
                     if(i==letter.length-1||letter[i+1]!='='){
+                        now=i;
                         wordcheck();
+                        Token t = new Token("=",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+1;
                         //System.out.println("ASSIGN =");
-                        bank.add("=");
+
                     }
                     else{
+                        now=i;
                         wordcheck();
+                        Token t = new Token("==",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+2;
                         //System.out.println("EQL ==");
                         i+=1;
-                        bank.add("==");
+
                     }
                 }
                 else if(letter[i]=='&'){
                     if(letter[i+1]=='&'){
+                        now=i;
                         wordcheck();
-                        //System.out.println("AND &&");
+                        Token t = new Token("&&",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+2;
                         i+=1;
-                        bank.add("&&");
+                        //System.out.println("AND &&");
                     }
                 }
                 else if(letter[i]=='|'){
                     if(letter[i+1]=='|'){
+                        now=i;
                         wordcheck();
-                        //System.out.println("OR ||");
+                        Token t = new Token("||",lineNumber,this.startCharacter);
+                        bank.add(t);
+                        this.startCharacter=i+2;
                         i+=1;
-                        bank.add("||");
+                        //System.out.println("OR ||");
                     }
                 }
                 else if(letter[i]=='"'){
+                    now=i;
                     wordcheck();
                     i+=1;
                     while(letter[i]!='"'){
@@ -153,9 +207,10 @@ public class Split{
                         i+=1;
                     }
                     //System.out.println("STRCON \""+word+"\"");
-                    bank.add("\""+word+"\"");
+                    Token t = new Token("\""+word+"\"",lineNumber,this.startCharacter);
+                    bank.add(t);
                     word="";
-
+                    this.startCharacter=i+1;
                 }
                 else{
                     word=word+letter[i];
@@ -166,11 +221,11 @@ public class Split{
     }
     public void checkBank(){
         for(int i=0;i<bank.size();i++){
-            System.out.println(bank.get(i));
+            System.out.println(bank.get(i).getContent()+","+bank.get(i).getLineNumber()+","+bank.get(i).getWordNumber());
         }
     }
 
-    public ArrayList<String> getBank(){
+    public ArrayList<Token> getBank(){
         return bank;
     }
 }

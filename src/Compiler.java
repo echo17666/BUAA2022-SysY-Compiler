@@ -1,5 +1,7 @@
+import Lexical.Split;
+import Syntax.VocabularyMain;
+
 import java.io.*;
-import java.util.Scanner;
 
 public class Compiler{
 public static void main(String[] args)throws Exception{
@@ -11,14 +13,15 @@ public static void main(String[] args)throws Exception{
     String  str;
     Split sentence = new Split();
     while((str=filereader.readLine())!=null){
-        sentence.setSentence(str,check);
+        sentence.setSentence(str,check,n);
         sentence.output();
         check=sentence.getCheck();
+        n+=1;
     }
     VocabularyMain vocabulary = new VocabularyMain(sentence.getBank());
     vocabulary.analyze();
     filereader.close();
-//    sentence.checkBank();
+    //sentence.checkBank();
 }
 
 

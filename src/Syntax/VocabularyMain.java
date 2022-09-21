@@ -1,9 +1,11 @@
+package Syntax;
+import Datam.Token;
 import java.util.ArrayList;
 
 public class VocabularyMain{
-    public ArrayList<String> bank=new ArrayList<>();
+    public ArrayList<Token> bank=new ArrayList<>();
 
-    public VocabularyMain(ArrayList<String> bank){
+    public VocabularyMain(ArrayList<Token> bank){
         this.bank=bank;
     }
     public void analyze(){

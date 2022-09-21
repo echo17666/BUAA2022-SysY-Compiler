@@ -1,16 +1,17 @@
+package Syntax;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-
+import Datam.Token;
 
 public class Identify{
     static HashMap<String,String> ReservedCharacter = new HashMap<String,String>();
-    public ArrayList<String> bank=new ArrayList<>();
+    public ArrayList <Token> bank;
     int current=0;
     String sym="";
-    public Identify(ArrayList<String> bank){
+    public Identify(ArrayList<Token> bank){
         this.bank=bank;
-        sym=bank.get(current);
+        sym=bank.get(current).getContent();
         ReservedCharacter.put("main","MAINTK");
         ReservedCharacter.put("const","CONSTTK");
         ReservedCharacter.put("int","INTTK");
@@ -63,8 +64,8 @@ public class Identify{
         int j=this.current;
         int check=0;
         for(;j<this.bank.size()&&check==0;j++){
-            if(check==0&&bank.get(j).equals("=")){return true;}
-            if(bank.get(j).equals(";")){check=1;}
+            if(check==0&&bank.get(j).getContent().equals("=")){return true;}
+            if(bank.get(j).getContent().equals(";")){check=1;}
         }
         return false;
     }
@@ -72,17 +73,15 @@ public class Identify{
         output(this.sym);
         if(this.current<bank.size()-1){
             this.current+=1;
-            this.sym=bank.get(this.current);
+            this.sym=bank.get(this.current).getContent();
         }
     }
     public String getnextsym(){
-        return bank.get(this.current+1);
+        return bank.get(this.current+1).getContent();
     }
-    public String getbeforesym(){
-        return bank.get(this.current-1);
-    }
+    public String getbeforesym(){return bank.get(this.current-1).getContent();}
     public String getnextnextsym(){
-        return bank.get(this.current+2);
+        return bank.get(this.current+2).getContent();
     }
     public void analyze(){
         CompUnit();
