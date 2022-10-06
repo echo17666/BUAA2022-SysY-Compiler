@@ -234,8 +234,12 @@ public class Meaning{
             mainFuncDef.setFatherToken(compUnit);
             mainFuncDef.setType("Function");
             mainFuncDef.setValue("int");
-            if(sym.equals("main")&&getnextsym().equals("(")&&getnextnextsym().equals(")")){nextsym();nextsym();nextsym();Block(mainFuncDef);}
+            if(sym.equals("main")&&getnextsym().equals("(")){
+                nextsym();nextsym();}
             else{}
+            if(sym.equals(")")){nextsym();}
+            else{errorOutput("j",bank.get(this.current));}
+            Block(mainFuncDef);
         }
         else{}
         ArrayList<Token> l=compUnit.getTokenList();
@@ -369,11 +373,16 @@ public class Meaning{
             int printfpoint=this.current;
             nextsym();
             if(sym.equals("(")){nextsym();
+                int now=this.current;
                 int intnum=FormatString();
                 int parnum=0;
+                int check=1;
+                if(intnum<0){check=-1;intnum=-1*intnum;}
                 while(sym.equals(",")){nextsym();Exp(t);parnum++;}
                 if(sym.equals(")")){nextsym();
+//                    if(check==-1){errorOutput("a",bank.get(now));}
                     if(intnum!=parnum){errorOutput("l",bank.get(printfpoint));}
+
                     if(sym.equals(";")){nextsym();}
                     else{errorOutput("i",bank.get(this.current-1));}
                 }
@@ -416,6 +425,7 @@ public class Meaning{
         char[] letter=s.toCharArray();
         int i=0;
         int num=0;
+        int check=1;
         if(letter[i]=='\"'){
             i++;
 
@@ -423,21 +433,25 @@ public class Meaning{
 
                 if(letter[i]==32||letter[i]==33||letter[i]>=40&&letter[i]<=126||letter[i]=='%'){
                     if(letter[i]==92&&(i>=letter.length-2||letter[i+1]!='n')){
+                        check=-1;
                         errorOutput("a",bank.get(this.current));
                     }
                     if(letter[i]=='%'&&(i>=letter.length-2||letter[i+1]!='d')){
+                        check=-1;
                         errorOutput("a",bank.get(this.current));
                     }
                     if(letter[i]=='%'&&i<letter.length-2&&letter[i+1]=='d'){num++;}
 
                     }
-                else{errorOutput("a",bank.get(this.current));}
+                else{errorOutput("a",bank.get(this.current));
+                    check=-1;
+                }
                 i++;
             }
 
         }
         nextsym();
-        return num;
+        return check*num;
     }
     public void Exp(Token t){
         AddExp(t);
@@ -655,6 +669,14 @@ public class Meaning{
         if(t==compUnit){return 0;}
         return returnDimention(t.getFatherToken(),sym);
     }
+    public String returnParamType(Token t,String sym){
+        ArrayList <Token>l=t.getTokenList();
+        for(int i=0;i<l.size();i++){
+            if(sym.equals(l.get(i).getContent())){return l.get(i).getValue();}
+        }
+        if(t==compUnit){return "none";}
+        return returnParamType(t.getFatherToken(),sym);
+    }
     public boolean isConst(Token t,String sym){
         ArrayList <Token>l=t.getTokenList();
         for(int i=0;i<l.size();i++){
@@ -704,16 +726,22 @@ public class Meaning{
             else{break;}
         }
         int parnum=0;
+        int stack=0;
         if(bank.get(i).getContent().equals(")")){parnum=0;}
         else{
             parnum=1;
             for(;;i++){
-                if(bank.get(i).getContent().equals(")")){
+                if(bank.get(i).getContent().equals(")")&&stack==0){
                     break;
                 }
-                if(bank.get(i).getContent().equals(",")){
+                if(bank.get(i).getContent().equals(",")&&stack==0){
                     parnum++;
                 }
+                if(bank.get(i).getContent().equals("(")){
+                    stack++;
+                }
+                if(bank.get(i).getContent().equals(")")&&stack>0){stack--;}
+                if(bank.get(i).getContent().equals("}")){break;}
             }
         }
         if(parnum==num){return true;}
@@ -759,18 +787,24 @@ public class Meaning{
 
         int nownum=0;
         int parnum=i;
+        int stack=0;
         for(;;i++){
-            if(bank.get(i).getContent().equals(")")){
+            if(bank.get(i).getContent().equals(")")&&stack==0){
                 b[nownum]=checkDimention(t,parnum,i-1);
                 nownum++;
                 parnum=i-1;
                 break;
             }
-            if(bank.get(i).getContent().equals(",")){
+            if(bank.get(i).getContent().equals(",")&&stack==0){
                 b[nownum]=checkDimention(t,parnum,i-1);
                 nownum++;
                 parnum=i+1;
             }
+            if(bank.get(i).getContent().equals("(")){
+                stack++;
+            }
+            if(bank.get(i).getContent().equals(")")&&stack>0){stack--;}
+            if(bank.get(i).getContent().equals("}")){break;}
         }
         for(int z=0;z<num;z++){
             if(a[z]!=b[z]){return false;}
@@ -783,12 +817,19 @@ public class Meaning{
         boolean check=true;
         for(int i=l;i<=r;i++){
             if(bank.get(i).getContent().equals("[")){
-                dim++;
+                dim=1;
+            }
+            if(bank.get(i).getContent().equals("]")&&bank.get(i+1).getContent().equals("[")){
+                dim=2;
+                i++;
             }
             if(isIdent(bank.get(i).getContent())&&check){
+                if(returnParamType(t,bank.get(i).getContent()).equals("void")){return -9999;}
                 oridim=returnDimention(t,bank.get(i).getContent());
+
                 check=false;
             }
+
         }
         return oridim-dim;
     }
@@ -816,7 +857,7 @@ public class Meaning{
         }
     }
     public void errorOutput(String type,Token s){
-        if(existLine==null||!existLine.contains(s.getLineNumber())){
+        if(!existLine.contains(s.getLineNumber())){
             ErrorLine e=new ErrorLine(s.getLineNumber(),type);
             error.add(e);
             existLine.add(s.getLineNumber());

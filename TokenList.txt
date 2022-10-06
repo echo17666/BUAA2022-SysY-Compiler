@@ -1,14 +1,75 @@
-s Var 1 <CompUnit>
-f1 Function 0 <CompUnit>
+s1_1 const 2 <CompUnit>
+s2_1 Var 2 <CompUnit>
+add Var 1 <CompUnit>
+s_2 Var 1 <CompUnit>
+s_3 Var 1 <CompUnit>
+a1 const 0 <CompUnit>
+a2 const 0 <CompUnit>
+a3 const 0 <CompUnit>
+month const 1 <CompUnit>
+year_1 const 0 <CompUnit>
+year_2 const 0 <CompUnit>
+get_average Function 0 <CompUnit>
 ---
-a Param 0 f1
-b Param 0 f1
-block block 0 f1
+a Param 2 get_average
+block block 0 get_average
+---
+s Var 0 block
+i Var 0 block
+blank Function 0 <CompUnit>
+---
+a Param 0 blank
+b Param 0 blank
+c Param 0 blank
+block block 0 blank
+blank2 Function 0 <CompUnit>
+---
+a Param 0 blank2
+b Param 1 blank2
+C23 Param 1 blank2
+block block 0 blank2
+add_1 Function 0 <CompUnit>
+---
+a Param 0 add_1
+s Param 1 add_1
+block block 0 add_1
+---
+i_1 Var 0 block
+sum Var 0 block
+checkyear Function 0 <CompUnit>
+---
+year Param 0 checkyear
+block block 0 checkyear
 ---
 block block 0 block
+---
+block block 0 block
+---
+block block 0 block
+block block 0 block
+block block 0 block
+printsth Function 0 <CompUnit>
+---
+block block 0 printsth
 <MainFuncDef> Function 0 <CompUnit>
 ---
 block block 0 <MainFuncDef>
 ---
+block block 0 block
+---
+j Var 0 block
+k Var 0 block
 i Var 0 block
-a Var 0 block
+in_put Var 0 block
+x Var 0 block
+y Var 0 block
+z Var 0 block
+x_1 Var 0 block
+y_1 Var 0 block
+z_1 Var 0 block
+aaa Var 0 block
+bbb Var 0 block
+ccc Var 0 block
+ddd Var 0 block
+eee Var 0 block
+fff Var 0 block

@@ -12,18 +12,24 @@ public static void main(String[] args)throws Exception{
     int check=0;
     String  str;
     Split sentence = new Split();
+    //按行读入
     while((str=filereader.readLine())!=null){
+        //词法分析
         sentence.setSentence(str,check,n);
         sentence.output();
         check=sentence.getCheck();
+        //行号递增
         n+=1;
     }
+    //语法分析，使用词法得到的Token表格
     //VocabularyMain vocabulary = new VocabularyMain(sentence.getBank());
     //vocabulary.analyze();
+    //语义分析，使用词法得到的Token表格，包含语法，语法+语义+错误一遍处理
     SemanticMain semantic = new SemanticMain(sentence.getBank());
     semantic.analyze();
+
     filereader.close();
-    //sentence.checkBank();
+
 }
 
 
