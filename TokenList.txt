@@ -1,0 +1,14 @@
+s Var 1 <CompUnit>
+f1 Function 0 <CompUnit>
+---
+a Param 0 f1
+b Param 0 f1
+block block 0 f1
+---
+block block 0 block
+<MainFuncDef> Function 0 <CompUnit>
+---
+block block 0 <MainFuncDef>
+---
+i Var 0 block
+a Var 0 block

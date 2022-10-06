@@ -1,4 +1,5 @@
 import Lexical.Split;
+import Semantic.SemanticMain;
 import Syntax.VocabularyMain;
 
 import java.io.*;
@@ -6,8 +7,7 @@ import java.io.*;
 public class Compiler{
 public static void main(String[] args)throws Exception{
     BufferedReader filereader=new BufferedReader(new FileReader("testfile.txt"));
-    PrintStream out = System.out;
-    System.setOut(new PrintStream("output.txt"));
+    FileWriter fw =new FileWriter("output.txt", false);
     int n=1;
     int check=0;
     String  str;
@@ -18,8 +18,10 @@ public static void main(String[] args)throws Exception{
         check=sentence.getCheck();
         n+=1;
     }
-    VocabularyMain vocabulary = new VocabularyMain(sentence.getBank());
-    vocabulary.analyze();
+    //VocabularyMain vocabulary = new VocabularyMain(sentence.getBank());
+    //vocabulary.analyze();
+    SemanticMain semantic = new SemanticMain(sentence.getBank());
+    semantic.analyze();
     filereader.close();
     //sentence.checkBank();
 }

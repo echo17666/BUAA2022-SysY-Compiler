@@ -1,5 +1,8 @@
 package Syntax;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import Datam.Token;
@@ -95,7 +98,7 @@ public class Identify{
         while(sym.equals("void")||sym.equals("int")&&isIdent(getnextsym())&&getnextnextsym().equals("(")){FuncDef();}
         if(sym.equals("int")&&getnextsym().equals("main")){MainFuncDef();}
         else{}
-        System.out.println("<CompUnit>");
+        output("<CompUnit>");
     }
     public void ConstDecl(){
         if(sym.equals("const")){nextsym();
@@ -107,7 +110,7 @@ public class Identify{
             else{}
         }
         else{}
-        System.out.println("<ConstDecl>");
+        output("<ConstDecl>");
     }
     public void ConstDef(){
         if(isIdent(sym)){nextsym();
@@ -116,7 +119,7 @@ public class Identify{
                 else{}
             }
             if(sym.equals("=")){nextsym();ConstInitVal();
-                System.out.println("<ConstDef>");}
+                output("<ConstDef>");}
             else{}
         }
         else{}
@@ -131,13 +134,13 @@ public class Identify{
             if(sym.equals("}")){nextsym();}
         }
         else{}
-        System.out.println("<ConstInitVal>");
+        output("<ConstInitVal>");
     }
     public void VarDecl(){
         if(sym.equals("int")){nextsym();VarDef();
             while(sym.equals(",")){nextsym();VarDef();}
             if(sym.equals(";")){nextsym();
-                System.out.println("<VarDecl>");}
+                output("<VarDecl>");}
             else{}
         }
         else{}
@@ -149,7 +152,7 @@ public class Identify{
                 else{}
             }
             if(sym.equals("=")){nextsym();InitVal();}
-            System.out.println("<VarDef>");
+            output("<VarDef>");
         }
         else{}
     }
@@ -162,7 +165,7 @@ public class Identify{
             if(sym.equals("}")){nextsym();}
         }
         else{}
-        System.out.println("<InitVal>");
+        output("<InitVal>");
     }
     public void FuncDef(){
         if(sym.equals("int")||sym.equals("void")){FuncType();
@@ -177,7 +180,7 @@ public class Identify{
             else{}
         }
         else{}
-        System.out.println("<FuncDef>");
+        output("<FuncDef>");
     }
     public void MainFuncDef(){
         if(sym.equals("int")){nextsym();
@@ -185,20 +188,20 @@ public class Identify{
             else{}
         }
         else{}
-        System.out.println("<MainFuncDef>");
+        output("<MainFuncDef>");
     }
     public void FuncType(){
         if(sym.equals("void")){nextsym();}
         else if(sym.equals("int")){nextsym();}
         else{}
-        System.out.println("<FuncType>");
+        output("<FuncType>");
     }
     public void FuncFParams(){
         if(sym.equals("int")){FuncFParam();
             while(sym.equals(",")){nextsym();FuncFParam();}
         }
         else{}
-        System.out.println("<FuncFParams>");
+        output("<FuncFParams>");
     }
     public void FuncFParam(){
         if(sym.equals("int")){nextsym();
@@ -216,7 +219,7 @@ public class Identify{
             else{}
         }
         else{}
-        System.out.println("<FuncFParam>");
+        output("<FuncFParam>");
     }
     public void Block(){
         if(sym.equals("{")){nextsym();
@@ -226,7 +229,7 @@ public class Identify{
             else{}
         }
         else{}
-        System.out.println("<Block>");
+        output("<Block>");
     }
     public void BlockItem(){
         if(sym.equals("const")||sym.equals("int")){
@@ -311,15 +314,15 @@ public class Identify{
             }
         }
         else{}
-        System.out.println("<Stmt>");
+        output("<Stmt>");
     }
     public void Exp(){
         AddExp();
-        System.out.println("<Exp>");
+        output("<Exp>");
     }
     public void Cond(){
         LOrExp();
-        System.out.println("<Cond>");
+        output("<Cond>");
     }
     public void LVal(){
         if(isIdent(sym)){nextsym();
@@ -329,7 +332,7 @@ public class Identify{
             }
         }
         else{}
-        System.out.println("<LVal>");
+        output("<LVal>");
     }
     public void PrimaryExp(){
         if(sym.equals("(")){nextsym();Exp();
@@ -339,11 +342,11 @@ public class Identify{
         else if(isNumber(sym)){Number1();}
         else if(isIdent(sym)){LVal();}
         else{}
-        System.out.println("<PrimaryExp>");
+        output("<PrimaryExp>");
     }
     public void Number1(){
         if(isNumber(sym)){nextsym();}
-        System.out.println("<Number>");
+        output("<Number>");
     }
     public void UnaryExp(){
         if(sym.equals("+")||sym.equals("-")||sym.equals("!")){UnaryOp();UnaryExp1();}
@@ -357,9 +360,9 @@ public class Identify{
             else{PrimaryExp();}
         }
         else{}
-        System.out.println("<UnaryExp>");
+        output("<UnaryExp>");
         if(sym.equals("*")||sym.equals("/")||sym.equals("%")){
-            System.out.println("<MulExp>");
+            output("<MulExp>");
         }
 
     }
@@ -375,26 +378,26 @@ public class Identify{
             else{PrimaryExp();}
         }
         else{}
-        System.out.println("<UnaryExp>");
+        output("<UnaryExp>");
     }
     public void UnaryOp(){
         if(sym.equals("!")||sym.equals("+")||sym.equals("-")){nextsym();}
         else{}
-        System.out.println("<UnaryOp>");
+        output("<UnaryOp>");
     }
     public void FuncRParams(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){Exp();}
         while(sym.equals(",")){nextsym();Exp();}
-        System.out.println("<FuncRParams>");
+        output("<FuncRParams>");
     }
     public void MulExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){UnaryExp();
             while(sym.equals("*")||sym.equals("/")||sym.equals("%")){nextsym();UnaryExp();}
         }
         else{}
-        System.out.println("<MulExp>");
+        output("<MulExp>");
         if(sym.equals("+")||sym.equals("-")){
-            System.out.println("<AddExp>");
+            output("<AddExp>");
         }
 
 
@@ -404,9 +407,9 @@ public class Identify{
             while(sym.equals("+")||sym.equals("-")){nextsym();MulExp();}
         }
         else{}
-        System.out.println("<AddExp>");
+        output("<AddExp>");
         if(sym.equals("<")||sym.equals(">")||sym.equals("<=")||sym.equals(">=")){
-            System.out.println("<RelExp>");
+            output("<RelExp>");
         }
 
 
@@ -417,9 +420,9 @@ public class Identify{
             while(sym.equals("<")||sym.equals(">")||sym.equals("<=")||sym.equals(">=")){nextsym();AddExp();}
         }
         else{}
-        System.out.println("<RelExp>");
+        output("<RelExp>");
         if(sym.equals("==")||sym.equals("!=")){
-            System.out.println("<EqExp>");
+            output("<EqExp>");
         }
 
 
@@ -430,54 +433,60 @@ public class Identify{
             while(sym.equals("==")||sym.equals("!=")){nextsym();RelExp();}
         }
         else{}
-        System.out.println("<EqExp>");
+        output("<EqExp>");
         if(sym.equals("&&")){
-            System.out.println("<LAndExp>");
+            output("<LAndExp>");
         }
-
-
-
     }
     public void LAndExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){EqExp();
             while(sym.equals("&&")){nextsym();EqExp();}
         }
         else{}
-        System.out.println("<LAndExp>");
+        output("<LAndExp>");
         if(sym.equals("||")){
-            System.out.println("<LOrExp>");
+            output("<LOrExp>");
         }
-
-
-
     }
     public void LOrExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){LAndExp();
             while(sym.equals("||")){nextsym();LAndExp();}
         }
         else{}
-        System.out.println("<LOrExp>");
+        output("<LOrExp>");
     }
     public void ConstExp(){AddExp();
-        System.out.println("<ConstExp>");
+        output("<ConstExp>");
     }
-
-
     public void output(String sym){
-            if(ReservedCharacter.containsKey(sym)){
-                System.out.println(ReservedCharacter.get(sym)+" "+sym);
+        FileWriter fw =null;
+        try {
+            fw=new FileWriter("output.txt", true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        PrintWriter pw = new PrintWriter(fw);
+            if(sym.charAt(0)=='<'&&sym.length()>1&&sym.charAt(1)-'A'>=0&&sym.charAt(1)-'A'<26){
+                pw.println(sym);
+                pw.flush();
+            }
+            else if(ReservedCharacter.containsKey(sym)){
+                pw.println(ReservedCharacter.get(sym)+" "+sym);
+                pw.flush();
             }
             else{
                 if(sym.charAt(0)=='"'){
-                    System.out.println("STRCON "+sym);
+                    pw.println("STRCON "+sym);
+                    pw.flush();
                 }
                 else if(isNumber(sym)){
-                    System.out.println("INTCON "+sym);
+                    pw.println("INTCON "+sym);
+                    pw.flush();
                 }
                 else{
-                    System.out.println("IDENFR "+sym);
+                    pw.println("IDENFR "+sym);
+                    pw.flush();
                 }
             }
-
     }
 }
