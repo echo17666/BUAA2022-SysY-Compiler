@@ -1,5 +1,16 @@
 # 编译器设计文档
+<!-- TOC -->
 
+- [编译器设计文档](#编译器设计文档)
+  - [1.参考编译器介绍](#1参考编译器介绍)
+  - [2.编译器总体设计](#2编译器总体设计)
+  - [3.词法分析设计](#3词法分析设计)
+    - [1.总述](#1总述)
+    - [2.编码前的设计](#2编码前的设计)
+    - [3.编码后的修改](#3编码后的修改)
+  - [4.语法分析设计](#4语法分析设计)
+
+<!-- /TOC -->
 ## 1.参考编译器介绍
 
 ## 2.编译器总体设计
@@ -26,10 +37,8 @@ int n=1;//行号
 Split sentence = new Split();
 //按行读入
 while((str=filereader.readLine())!=null){
-    //词法分析
     sentence.setSentence(str,n);
     sentence.output();
-    check=sentence.getCheck();
     //行号递增
     n+=1;
 }
@@ -144,205 +153,49 @@ else if(letter[i]=='<'){
 }
 ```
 
-最后得到的完整代码结果如下
+同时，对于 **`/* */`** 和 **`//`** 的注释写法有所不同，因为我们是一行行进入分词器的，对于 **`//`** 的判断，只要读取到，则可以直接结束该行的分词。而对于 **`/* */`** ，由于注释可以**跨行**，故我们需要外加一个**check**来判断此时**是否需要进行分词**
 ```java
-//Split.java 分词器
-import java.util.HashMap;
-
-public class Split{
-    String Sentence;
-    char letter[];
-    String word="";
-    int check;
-    HashMap <Character,String> SingleCharacter = new HashMap<Character,String>();
-    public void setSentence(String sentence,int check){
-        this.Sentence=sentence;
-        this.check=check;
-        SingleCharacter.put('+',"PLUS");
-        SingleCharacter.put('-',"MINU");
-        SingleCharacter.put('*',"MULT");
-        SingleCharacter.put('%',"MOD");
-        SingleCharacter.put(';',"SEMICN");
-        SingleCharacter.put(',',"COMMA");
-        SingleCharacter.put('(',"LPARENT");
-        SingleCharacter.put(')',"RPARENT");
-        SingleCharacter.put('[',"LBRACK");
-        SingleCharacter.put(']',"RBRACK");
-        SingleCharacter.put('{',"LBRACE");
-        SingleCharacter.put('}',"RBRACE");
-    }
-    public void wordcheck(){
-        if(word!=""){
-            WordCheck w = new WordCheck();
-            w.setWord(word);
-            w.output();
-            word="";
-        }
-    }
-
-    public int getCheck(){
-        return this.check;
-    }
-
-    public void output(){
-        letter=Sentence.toCharArray();
-        for(int i=0;i<letter.length;i++){
-            if(this.check==1){
-                if(i==letter.length-1||!(letter[i]=='*'&&letter[i+1]=='/')){
-                   continue;
-                }
-
-                else{
-                    i=i+1;
-                    this.check=0;
-                }
-            }
-            else{
-                if(letter[i]==' '||letter[i]=='\n'||letter[i]=='\r'||letter[i]=='\t'){
-                    wordcheck();
-                }
-                else if(SingleCharacter.containsKey(letter[i])){
-                    wordcheck();
-                    System.out.println(SingleCharacter.get(letter[i])+" "+letter[i]);
-                }
-                else if(letter[i]=='!'){
-                    if(i==letter.length-1||letter[i+1]!='='){
-                        wordcheck();
-                        System.out.println("NOT !");
-                    }
-                    else{
-                        wordcheck();
-                        System.out.println("NEQ !=");
-                        i+=1;
-                    }
-                }
-                else if(letter[i]=='/'){
-                    if(i==letter.length-1||letter[i+1]!='/'&&letter[i+1]!='*'){
-                        wordcheck();
-                        System.out.println("DIV /");
-                    }
-                    else{
-                        wordcheck();
-                        if(letter[i+1]=='/'){
-                            break;
-                        }
-                        else if(letter[i+1]=='*'){
-                            this.check=1;
-                            i+=1;
-                        }
-                    }
-                }
-                else if(letter[i]=='<'){
-                    if(i==letter.length-1||letter[i+1]!='='){
-                        wordcheck();
-                        System.out.println("LSS <");
-                    }
-                    else{
-                        wordcheck();
-                        System.out.println("LEQ <=");
-                        i+=1;
-                    }
-                }
-                else if(letter[i]=='>'){
-                    if(i==letter.length-1||letter[i+1]!='='){
-                        wordcheck();
-                        System.out.println("GRE >");
-                    }
-                    else{
-                        wordcheck();
-                        System.out.println("GEQ >=");
-                        i+=1;
-                    }
-                }
-                else if(letter[i]=='='){
-                    if(i==letter.length-1||letter[i+1]!='='){
-                        wordcheck();
-                        System.out.println("ASSIGN =");
-                    }
-                    else{
-                        wordcheck();
-                        System.out.println("EQL ==");
-                        i+=1;
-                    }
-                }
-                else if(letter[i]=='&'){
-                    if(letter[i+1]=='&'){
-                        wordcheck();
-                        System.out.println("AND &&");
-                        i+=1;
-                    }
-                }
-                else if(letter[i]=='|'){
-                    if(letter[i+1]=='|'){
-                        wordcheck();
-                        System.out.println("OR ||");
-                        i+=1;
-                    }
-                }
-                else if(letter[i]=='"'){
-                    wordcheck();
-                    i+=1;
-                    while(letter[i]!='"'){
-                        word=word+letter[i];
-                        i+=1;
-                    }
-                    System.out.println("STRCON \""+word+"\"");
-                    word="";
-                }
-                else{
-                    word=word+letter[i];
-                }
-            }
-        }
+else if(letter[i]=='/'){
+    if(i==letter.length-1||letter[i+1]!='/'&&letter[i+1]!='*'){
         wordcheck();
+        System.out.println("DIV /");
     }
-}
-
-//WordCheck.java 单词判断
-import java.util.HashMap;
-
-public class WordCheck{
-    String word="";
-    HashMap<String,String> ReservedWords = new HashMap<String,String>();
-    public void setWord(String word){
-        this.word=word;
-        ReservedWords.put("main","MAINTK");
-        ReservedWords.put("const","CONSTTK");
-        ReservedWords.put("int","INTTK");
-        ReservedWords.put("break","BREAKTK");
-        ReservedWords.put("continue","CONTINUETK");
-        ReservedWords.put("if","IFTK");
-        ReservedWords.put("else","ELSETK");
-        ReservedWords.put("while","WHILETK");
-        ReservedWords.put("getint","GETINTTK");
-        ReservedWords.put("printf","PRINTFTK");
-        ReservedWords.put("return","RETURNTK");
-        ReservedWords.put("void","VOIDTK");
-    }
-
-    public void output(){
-            if(ReservedWords.containsKey(word)){
-                System.out.println(ReservedWords.get(word)+" "+word);
-            }
-            else{
-                char letter[]=word.toCharArray();
-                if(letter[0]>='0'&&letter[0]<='9'){
-                    if(isNumber(word)){
-                        System.out.println("INTCON "+word);
-                    }
-                }
-                else{
-                    System.out.println("IDENFR "+word);
-                }
-            }
+    else{
+        wordcheck();
+        if(letter[i+1]=='/'){
+            break;
         }
-    public static boolean isNumber(String str) {
-        for (int i=0;i<str.length();i++) {
-            if (!Character.isDigit(str.charAt(i))) {
-                return false;
-            }
+        else if(letter[i+1]=='*'){
+            this.check=1;
+            i+=1;
         }
-        return true;
     }
 }
 ```
+
+如果此时是注释且没有读到 **`*/`** ，则直接读下一个字符，否则进行**分词**
+```java
+if(this.check==1){
+    if(i==letter.length-1||!(letter[i]=='*'&&letter[i+1]=='/')){
+        continue;
+    }
+    else{
+        i=i+1;
+        this.check=0;
+    }
+}
+```
+
+相应的，最外层也要增加这个参数
+```java
+while((str=filereader.readLine())!=null){
+    sentence.setSentence(str,check,n);
+    sentence.output();
+    check=sentence.getCheck();
+    //行号递增
+    n+=1;
+}
+```
+由此，词法分析完成
+
+## 4.语法分析设计
