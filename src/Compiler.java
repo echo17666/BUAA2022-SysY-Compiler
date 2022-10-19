@@ -1,3 +1,4 @@
+import LLVM.LLvmMain;
 import Lexical.Split;
 import Semantic.SemanticMain;
 import Syntax.VocabularyMain;
@@ -27,6 +28,9 @@ public static void main(String[] args)throws Exception{
     //语义分析，使用词法得到的Token表格，包含语法，语法+语义+错误一遍处理
     SemanticMain semantic = new SemanticMain(sentence.getBank());
     semantic.analyze();
+    //生成中间代码
+    LLvmMain llvmMain = new LLvmMain(semantic.getAst());
+    llvmMain.generate();
 
     filereader.close();
 

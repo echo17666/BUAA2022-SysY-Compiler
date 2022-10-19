@@ -129,7 +129,7 @@ public class Split{
                         Token t = new Token("<=",lineNumber,this.startCharacter);
                         bank.add(t);
                         this.startCharacter=i+2;
-                       // System.out.println("LEQ <=");
+                        // System.out.println("LEQ <=");
                         i+=1;
 
                     }

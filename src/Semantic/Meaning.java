@@ -863,6 +863,9 @@ public class Meaning{
             existLine.add(s.getLineNumber());
         }
     }
+    public Token getTokenAst(){
+        return compUnit;
+    }
 
     public void finalErrorOutput(){
         FileWriter fw=null;
