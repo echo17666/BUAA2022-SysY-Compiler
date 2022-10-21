@@ -26,6 +26,7 @@ INTCON 25
 <Number>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 MULT *
 INTCON 4
 <Number>
@@ -422,6 +423,7 @@ RBRACK ]
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 100
 <Number>
@@ -656,6 +658,7 @@ IDENFR year_1
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 MULT *
 INTCON 25
 <Number>
@@ -723,6 +726,7 @@ IDENFR i
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 GEQ >=
 INTCON 0
 <Number>
@@ -763,6 +767,7 @@ RBRACK ]
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 PLUS +
 IDENFR a
 LBRACK [
@@ -787,6 +792,7 @@ RBRACK ]
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 PLUS +
 IDENFR a
 LBRACK [
@@ -811,6 +817,7 @@ RBRACK ]
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 PLUS +
 IDENFR a
 LBRACK [
@@ -835,6 +842,7 @@ RBRACK ]
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 PLUS +
 IDENFR a
 LBRACK [
@@ -870,6 +878,7 @@ IDENFR s
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 DIV /
 INTCON 5
 <Number>
@@ -909,6 +918,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1027,6 +1037,7 @@ IDENFR i_1
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 GEQ >=
 INTCON 0
 <Number>
@@ -1049,6 +1060,7 @@ IDENFR sum
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 PLUS +
 IDENFR s
 LBRACK [
@@ -1076,6 +1088,7 @@ IDENFR i_1
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1098,6 +1111,7 @@ IDENFR a
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 3
 <Number>
@@ -1115,6 +1129,7 @@ IDENFR sum
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 DIV /
 IDENFR a
 <LVal>
@@ -1133,6 +1148,7 @@ IDENFR a
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 PLUS +
 INTCON 4
 <Number>
@@ -1150,6 +1166,7 @@ IDENFR sum
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 MULT *
 IDENFR a
 <LVal>
@@ -1168,6 +1185,7 @@ IDENFR sum
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 IDENFR a
 <LVal>
@@ -1186,6 +1204,7 @@ IDENFR a
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 PLUS +
 INTCON 6
 <Number>
@@ -1203,6 +1222,7 @@ IDENFR sum
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 MOD %
 IDENFR a
 <LVal>
@@ -1244,6 +1264,7 @@ IDENFR year
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 GEQ >=
 INTCON 0
 <Number>
@@ -1267,6 +1288,7 @@ IDENFR year
 <MulExp>
 <AddExp>
 <RelExp>
+<EqExp>
 NEQ !=
 PLUS +
 <UnaryOp>
@@ -1288,6 +1310,7 @@ IDENFR year
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 LEQ <=
 INTCON 2021
 <Number>
@@ -1309,6 +1332,7 @@ IDENFR year
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 MOD %
 LPARENT (
 MINU -
@@ -1318,6 +1342,7 @@ IDENFR year_1
 <PrimaryExp>
 <UnaryExp>
 <UnaryExp>
+<MulExp>
 MULT *
 MINU -
 <UnaryOp>
@@ -1341,6 +1366,7 @@ RPARENT )
 <MulExp>
 <AddExp>
 <RelExp>
+<EqExp>
 EQL ==
 INTCON 0
 <Number>
@@ -1358,6 +1384,7 @@ IDENFR year
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 MOD %
 IDENFR year_1
 <LVal>
@@ -1372,6 +1399,7 @@ RPARENT )
 <MulExp>
 <AddExp>
 <RelExp>
+<EqExp>
 EQL ==
 INTCON 0
 <Number>
@@ -1388,6 +1416,7 @@ IDENFR year
 <LVal>
 <PrimaryExp>
 <UnaryExp>
+<MulExp>
 MOD %
 IDENFR year_2
 <LVal>
@@ -1402,6 +1431,7 @@ RPARENT )
 <MulExp>
 <AddExp>
 <RelExp>
+<EqExp>
 NEQ !=
 INTCON 0
 <Number>
@@ -1683,6 +1713,7 @@ IDENFR i
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 GRE >
 INTCON 0
 <Number>
@@ -1706,6 +1737,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1721,6 +1753,7 @@ RBRACK ]
 <MulExp>
 <AddExp>
 <RelExp>
+<EqExp>
 EQL ==
 INTCON 300
 <Number>
@@ -1743,6 +1776,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1783,6 +1817,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1796,6 +1831,7 @@ RBRACK ]
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 300
 <Number>
@@ -1821,6 +1857,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1835,6 +1872,7 @@ RBRACK ]
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 LSS <
 INTCON 100
 <Number>
@@ -1860,6 +1898,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1900,6 +1939,7 @@ INTCON 0
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 GRE >
 INTCON 1
 <Number>
@@ -1923,6 +1963,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1938,6 +1979,7 @@ RBRACK ]
 <MulExp>
 <AddExp>
 <RelExp>
+<EqExp>
 EQL ==
 INTCON 300
 <Number>
@@ -1957,6 +1999,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -1971,6 +2014,7 @@ RBRACK ]
 <UnaryExp>
 <MulExp>
 <AddExp>
+<RelExp>
 GRE >
 INTCON 332
 <Number>
@@ -1996,6 +2040,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>
@@ -2033,6 +2078,7 @@ IDENFR i
 <PrimaryExp>
 <UnaryExp>
 <MulExp>
+<AddExp>
 MINU -
 INTCON 1
 <Number>

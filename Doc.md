@@ -4,6 +4,9 @@
 - [编译器设计文档](#编译器设计文档)
   - [1.参考编译器介绍](#1参考编译器介绍)
   - [2.编译器总体设计](#2编译器总体设计)
+    - [1.总体结构](#1总体结构)
+    - [2.接口设计](#2接口设计)
+    - [3.文件组织](#3文件组织)
   - [3.词法分析设计](#3词法分析设计)
     - [1.总述](#1总述)
     - [2.编码前的设计](#2编码前的设计)
@@ -21,7 +24,102 @@
 ## 1.参考编译器介绍
 
 ## 2.编译器总体设计
+### 1.总体结构
+总体结构按照编译顺序，即**词法分析**、**语法分析**、**语义分析**、**代码生成**四个部分，每一个部分单独设置文件包，然后在入口程序分别执行，即四个部分采用**四遍**运行。然后每一个部分**接收上一个部分的输入**，然后**把输出传递给下一个部分**。这样的过程就形成了类似一个**单向链**，每一个部分都是一个**单独的模块**，这样就可以**方便的进行每一步单元测试**，且一个模块的重构不会影响其他模块。
 
+### 2.接口设计
+接口设计采用类似**工厂模式**的设计方法，即每一个部分都有一个**入口程序**，然后在入口程序中调用相应的**分析器**，分析器中调用相应的**工厂类（词总表/符号表）**，工厂类中调用相应的**基础类（词）**同时实现类中调用相应的方法。每一个工厂的入口程序暴露给总入口 **`Compiler.java`** ，总入口程序调用相应的入口程序，然后调用相应的分析器。 **`Compiler.java`** 的代码如下
+```java
+public class Compiler{
+public static void main(String[] args)throws Exception{
+    BufferedReader filereader=new BufferedReader(new FileReader("testfile.txt"));
+    FileWriter fw =new FileWriter("output.txt", false);
+    int n=1;
+    int check=0;
+    String  str;
+    Split sentence = new Split();
+    //按行读入
+    while((str=filereader.readLine())!=null){
+        //词法分析
+        sentence.setSentence(str,check,n);
+        sentence.output();
+        check=sentence.getCheck();
+        //行号递增
+        n+=1;
+    }
+    //语法分析，使用词法得到的Token表格，实际操作中下面两行应该注释（因为语义分析包含语法分析所有内容）
+    SyntaxMain syntax = new SyntaxMain(sentence.getBank());
+    syntax.analyze();
+    //语义分析，使用词法得到的Token表格，包含语法，语法+语义+错误一遍处理
+    SemanticMain semantic = new SemanticMain(sentence.getBank());
+    semantic.analyze();
+    //生成中间代码
+    LLvmMain llvmMain = new LLvmMain(semantic.getAst());
+    llvmMain.generate();
+    filereader.close();
+}
+}
+```
+
+同时，每个部分的入口程序都是一个**单独的类**，这样就可以**方便的进行单元测试**，同时也可以让把每一部分的内部过程隐藏，这样入口函数可以使用该模块的所有功能，将其封装，从而对于总入口函数 **`Compiler.java`** 来说，每一个模块都是一个**黑盒**，只需要输入上层的输入，然后接收这层给的输出，给下一个模块即可。
+
+例如，对于语义分析， **`Compiler.java`** 中的代码如下
+
+```java
+SemanticMain semantic = new SemanticMain(sentence.getBank());
+semantic.analyze();
+```
+不难发现，构造函数传入的是上一个黑盒————词法分析的输出，然后直接调用 **`analyze()`** 方法进行语法分析，而其生成的语法树则是通过 **`getAst()`** 方法获取并交给 **代码生成`LLvmMain类`** 的的，这样就可以将语法分析的内部过程隐藏，从而使得 **`Compiler.java`** 只需要知道语法分析的输入和输出即可。
+
+而对于每个部分的入口函数，则是对底层代码的**进一步封装**，使得上层的代码更加简洁，例如，对于语义分析，其入口函数 **`SemanticMain.java`** 的代码如下
+```java
+public class SemanticMain{
+    public ArrayList<Token> bank=new ArrayList<>();
+    FileWriter fw1 =new FileWriter("error.txt", false);
+    FileWriter fw2 =new FileWriter("TokenList.txt", false);
+    SemanticProcedure semanticProcedure= null;
+    public SemanticMain(ArrayList<Token> bank) throws IOException{
+        this.bank=bank;
+    }
+    public void analyze(){
+        semanticProcedure= new SemanticProcedure(bank);
+        semanticProcedure.analyze();
+        semanticProcedure.check();
+        semanticProcedure.finalErrorOutput();
+    }
+    public Token getAst(){
+        return semanticProcedure.getTokenAst();
+    }
+}
+```
+不难发现，入口函数内，我们将其底层要输出的文件进行**初始化**，同时创建一个分析程序 **`SemanticProcedure`**，其构造函数获取上一模块的输入，然后分析程序调用 **`analyze()`** 方法进行 **`语法/语义分析`** ，调用 **`check()`** 方法进行 **`符号表`** 的检查，最后调用 **`finalErrorOutput()`** 方法输出 **`错误处理`** 。对该模块测试可以在这里添加方法，而这三个方法封装在一个 **`analyze()`** 内，供主程序直接调用。同时，通过 **`getAst()`** 方法获取语法树，从而将语义分析的内部过程隐藏，从而使得入口函数只需要知道**语义分析的输入和输出**即可。
+
+### 3.文件组织
+文件组织采用**一遍一个package**的结构，每一个package作每一个单独的步骤。具体结构如下：
+```bash
+src
+│  Compiler.java  #入口程序
+│
+├─Datam #基础类
+│      ErrorLine.java #错误类
+│      Token.java #标识符类
+│
+├─Lexical #词法分析
+│      Split.java #分词器
+│      WordCheck.java #单词分析器
+│
+├─LLVM #代码生成
+│      Generator.java #代码生成器
+│      LLvmMain.java #代码生成入口程序
+│
+├─Semantic #语义分析(错误处理)
+│      SemanticMain.java #语义分析入口程序
+│      SemanticProcedure.java #语义分析器
+│
+└─Syntax #语法分析
+       SyntaxMain.java #语法分析入口程序
+       SyntaxProcedure.java #语法分析器
+```
 ## 3.词法分析设计
 
 
