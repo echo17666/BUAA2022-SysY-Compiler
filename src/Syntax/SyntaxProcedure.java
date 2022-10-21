@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import Datam.Token;
 
-public class Identify{
+public class SyntaxProcedure{
     static HashMap<String,String> ReservedCharacter = new HashMap<String,String>();
     public ArrayList <Token> bank;
     int current=0;
     String sym="";
-    public Identify(ArrayList<Token> bank){
+    public SyntaxProcedure(ArrayList<Token> bank){
         this.bank=bank;
         sym=bank.get(current).getContent();
         ReservedCharacter.put("main","MAINTK");
@@ -349,7 +349,7 @@ public class Identify{
         output("<Number>");
     }
     public void UnaryExp(){
-        if(sym.equals("+")||sym.equals("-")||sym.equals("!")){UnaryOp();UnaryExp1();}
+        if(sym.equals("+")||sym.equals("-")||sym.equals("!")){UnaryOp();UnaryExp();}
         else if(sym.equals("(")||isNumber(sym)){PrimaryExp();}
         else if(isIdent(sym)){
             if(getnextsym().equals("(")){nextsym();nextsym();
@@ -361,25 +361,8 @@ public class Identify{
         }
         else{}
         output("<UnaryExp>");
-        if(sym.equals("*")||sym.equals("/")||sym.equals("%")){
-            output("<MulExp>");
-        }
+    }
 
-    }
-    public void UnaryExp1(){
-        if(sym.equals("+")||sym.equals("-")||sym.equals("!")){UnaryOp();UnaryExp1();}
-        else if(sym.equals("(")||isNumber(sym)){PrimaryExp();}
-        else if(isIdent(sym)){
-            if(getnextsym().equals("(")){nextsym();nextsym();
-                if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){FuncRParams();}
-                if(sym.equals(")")){nextsym();}
-                else{}
-            }
-            else{PrimaryExp();}
-        }
-        else{}
-        output("<UnaryExp>");
-    }
     public void UnaryOp(){
         if(sym.equals("!")||sym.equals("+")||sym.equals("-")){nextsym();}
         else{}
@@ -392,65 +375,78 @@ public class Identify{
     }
     public void MulExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){UnaryExp();
-            while(sym.equals("*")||sym.equals("/")||sym.equals("%")){nextsym();UnaryExp();}
+            while(sym.equals("*")||sym.equals("/")||sym.equals("%")){
+                output("<MulExp>");
+                nextsym();UnaryExp();
+                if(getbeforesym().equals("*")||getbeforesym().equals("/")||getbeforesym().equals("%")){
+                    output("<MulExp>");
+                }
+            }
         }
         else{}
         output("<MulExp>");
-        if(sym.equals("+")||sym.equals("-")){
-            output("<AddExp>");
-        }
-
-
     }
     public void AddExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){MulExp();
-            while(sym.equals("+")||sym.equals("-")){nextsym();MulExp();}
+            while(sym.equals("+")||sym.equals("-")){
+                output("<AddExp>");
+                nextsym();MulExp();
+                if(getbeforesym().equals("+")||getbeforesym().equals("-")){
+                    output("<AddExp>");
+                }
+            }
         }
         else{}
         output("<AddExp>");
-        if(sym.equals("<")||sym.equals(">")||sym.equals("<=")||sym.equals(">=")){
-            output("<RelExp>");
-        }
-
-
-
     }
     public void RelExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){AddExp();
-            while(sym.equals("<")||sym.equals(">")||sym.equals("<=")||sym.equals(">=")){nextsym();AddExp();}
+            while(sym.equals("<")||sym.equals(">")||sym.equals("<=")||sym.equals(">=")){
+                output("<RelExp>");
+                nextsym();AddExp();
+                if(getbeforesym().equals("<")||getbeforesym().equals(">")||getbeforesym().equals("<=")||getbeforesym().equals(">=")){
+                    output("<RelExp>");
+                }
+            }
         }
         else{}
         output("<RelExp>");
-        if(sym.equals("==")||sym.equals("!=")){
-            output("<EqExp>");
-        }
-
-
-
     }
     public void EqExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){RelExp();
-            while(sym.equals("==")||sym.equals("!=")){nextsym();RelExp();}
+            while(sym.equals("==")||sym.equals("!=")){
+                output("<EqExp>");
+                nextsym();RelExp();
+                if(getbeforesym().equals("==")||getbeforesym().equals("!=")){
+                    output("<EqExp>");
+                }
+            }
         }
         else{}
         output("<EqExp>");
-        if(sym.equals("&&")){
-            output("<LAndExp>");
-        }
     }
     public void LAndExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){EqExp();
-            while(sym.equals("&&")){nextsym();EqExp();}
+            while(sym.equals("&&")){
+                output("<LAndExp>");
+                nextsym();EqExp();
+                if(getbeforesym().equals("&&")){
+                    output("<LAndExp>");
+                }
+            }
         }
         else{}
         output("<LAndExp>");
-        if(sym.equals("||")){
-            output("<LOrExp>");
-        }
     }
     public void LOrExp(){
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){LAndExp();
-            while(sym.equals("||")){nextsym();LAndExp();}
+            while(sym.equals("||")){
+                output("<LOrExp>");
+                nextsym();LAndExp();
+                if(getbeforesym().equals("||")){
+                    output("<LOrExp>");
+                }
+            }
         }
         else{}
         output("<LOrExp>");

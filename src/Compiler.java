@@ -1,7 +1,7 @@
 import LLVM.LLvmMain;
 import Lexical.Split;
 import Semantic.SemanticMain;
-import Syntax.VocabularyMain;
+import Syntax.SyntaxMain;
 
 import java.io.*;
 
@@ -23,8 +23,8 @@ public static void main(String[] args)throws Exception{
         n+=1;
     }
     //语法分析，使用词法得到的Token表格
-    //VocabularyMain vocabulary = new VocabularyMain(sentence.getBank());
-    //vocabulary.analyze();
+    //SyntaxMain syntax = new SyntaxMain(sentence.getBank());
+    //syntax.analyze();
     //语义分析，使用词法得到的Token表格，包含语法，语法+语义+错误一遍处理
     SemanticMain semantic = new SemanticMain(sentence.getBank());
     semantic.analyze();
