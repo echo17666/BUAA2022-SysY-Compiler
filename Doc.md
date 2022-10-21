@@ -476,9 +476,9 @@ Number → IntConst | `HexadecimalConst`
   - 十六进制数 HEXCON
 
 - 十六进制说明：
-  - HexadecimalConst → Hexadecimal`Prefix` Hexadecimal`Digit` | HexadecimalConst Hexadecimal`Digit`
-  - Hexadecimal`Prefix` → `'0x'` | `'0X'`
-  - Hexadecimal`Digit` → `'0'` |`'1'` |`'2'` |`'3'` |`'4'` |`'5'` |`'6'` |`'7'` |`'8'` |`'9'` |`'A'` |`'B'` |`'C'` |`'D'` |`'E'` |`'F'` |`'a'` |`'b'` |`'c'` |`'d'` |`'e'` |`'f'` 
+  - HexadecimalConst → HexadecimalPrefix HexadecimalDigit | HexadecimalConst HexadecimalDigit
+  - HexadecimalPrefix → `'0x'` | `'0X'`
+  - HexadecimalDigit → `'0'` |`'1'` |`'2'` |`'3'` |`'4'` |`'5'` |`'6'` |`'7'` |`'8'` |`'9'` |`'A'` |`'B'` |`'C'` |`'D'` |`'E'` |`'F'` |`'a'` |`'b'` |`'c'` |`'d'` |`'e'` |`'f'` 
 
 一共十个样例点（这个具体怎么分的忘记了，但是应该不重要）
 - **testfile 1-3** 只判断`源程序`
@@ -545,7 +545,7 @@ public void Stmt(){
 
 这里我们采用最简单的判别方法，首先进行文法的修改，即消除左递归。修改后文法为
 
-- HexadecimalConst → ( `0x` | `0X` ) Hexadecimal`Digit` { Hexadecimal`Digit` }
+- HexadecimalConst → ( `0x` | `0X` ) HexadecimalDigit { HexadecimalDigit }
 
 首先判断是否是 **`0`** ，如果是，判断下一个字符是否是 **`x/X`** ，如果是，那么接下来判断是否是十六进制数，即0-9/a-f/A-F，如果是，则返回true，否则返回false。
 
