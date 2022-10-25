@@ -307,7 +307,6 @@ public class SemanticProcedure{
             l.add(b);
             t.setTokenList(l);
             if(b!=null&&b.getHasReturn()){t.setHasReturn(true);}
-
         }
         else{}
         output("<Block>");

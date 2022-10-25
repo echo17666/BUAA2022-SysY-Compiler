@@ -7,7 +7,7 @@ import java.io.*;
 
 public class Compiler{
 public static void main(String[] args)throws Exception{
-    BufferedReader filereader=new BufferedReader(new FileReader("testfile.txt"));
+    BufferedReader filereader=new BufferedReader(new FileReader("check.txt"));
     FileWriter fw =new FileWriter("output.txt", false);
     int n=1;
     int check=0;
@@ -23,13 +23,16 @@ public static void main(String[] args)throws Exception{
         n+=1;
     }
     //语法分析，使用词法得到的Token表格
-    //SyntaxMain syntax = new SyntaxMain(sentence.getBank());
-    //syntax.analyze();
+    SyntaxMain syntax = new SyntaxMain(sentence.getBank());
+    syntax.analyze();
     //语义分析，使用词法得到的Token表格，包含语法，语法+语义+错误一遍处理
-    SemanticMain semantic = new SemanticMain(sentence.getBank());
-    semantic.analyze();
+
+    //SemanticMain semantic = new SemanticMain(sentence.getBank());
+    //semantic.analyze();
+
     //生成中间代码
-    LLvmMain llvmMain = new LLvmMain(semantic.getAst());
+
+    LLvmMain llvmMain = new LLvmMain(syntax.getAst());
     llvmMain.generate();
 
     filereader.close();

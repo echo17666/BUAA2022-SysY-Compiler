@@ -1,62 +1,21 @@
-<CompUnit> Var none
-s1_1 const none
-s2_1 Var none
-add Var none
-s_2 Var none
-s_3 Var none
-a1 const none
-a2 const none
-a3 const none
-month const none
-year_1 const none
-year_2 const none
-get_average Function void
-a Param none
-block block none
-s Var none
-i Var none
-blank Function void
-a Param none
-b Param none
-c Param none
-block block none
-blank2 Function void
-a Param none
-b Param none
-C23 Param none
-block block none
-add_1 Function int
-a Param none
-s Param none
-block block none
-i_1 Var none
-sum Var none
-checkyear Function int
-year Param none
-block block none
-block block none
-block block none
-block block none
-block block none
-block block none
-printsth Function void
-block block none
-<MainFuncDef> Function int
-block block none
-block block none
-j Var none
-k Var none
-i Var none
-in_put Var none
-x Var none
-y Var none
-z Var none
-x_1 Var none
-y_1 Var none
-z_1 Var none
-aaa Var none
-bbb Var none
-ccc Var none
-ddd Var none
-eee Var none
-fff Var none
+declare i32 @getint()
+declare void @putint(i32)
+declare void @putch(i32)
+declare void @putstr(i8*)
+@a = dso_local global i32 5
+@d = dso_local global i32 4
+
+define dso_local i32 @main() {
+    %v1 = alloca i32
+    store i32 0, i32* %v1
+    %v2 = load i32, i32* %v1
+    %v3 = call i32 @getint()
+    store i32 %v3, i32* %v1
+    %v4 = load i32, i32* @a
+    %v5 = load i32, i32* %v1
+    %v6 = load i32, i32* @d
+    %v7 = mul i32 %v5, %v6
+    %v8 = add i32 %v4, %v7
+    call void @putint(i32 %v8)
+    ret i32 0
+}

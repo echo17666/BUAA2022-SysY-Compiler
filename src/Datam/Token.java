@@ -10,6 +10,7 @@ public class Token{
     String type="Var";
     String value="none";
     boolean hasReturn=false;
+    String syntax="";
     Integer dimension=0;
     Token FatherToken=null;
     ArrayList<Token> TokenList=new ArrayList<Token>();
@@ -21,6 +22,14 @@ public class Token{
 
     public void setFatherToken(Token fatherToken){
         FatherToken=fatherToken;
+    }
+
+    public void setSyntax(String syntax){
+        this.syntax=syntax;
+    }
+
+    public String getSyntax(){
+        return syntax;
     }
 
     public Token getFatherToken(){
