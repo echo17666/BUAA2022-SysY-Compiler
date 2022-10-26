@@ -14,6 +14,7 @@ public class Generator{
     int level=0;
     AstNode Rootast = null;
     int regId=1;
+    int FuncRegId = 0;
     String out="";
     int nowtag=0;
     ArrayList <AstNode> stack = new ArrayList<>();
@@ -43,12 +44,16 @@ public class Generator{
         else if(ast.getContent().equals("<ConstExp>")){ConstExp(ast);}
         else if(ast.getContent().equals("<VarDef>")){VarDef(ast);}
         else if(ast.getContent().equals("<InitVal>")){InitVal(ast);}
+        else if(ast.getContent().equals("<FuncDef>")){FuncDef(ast);}
+        else if(ast.getContent().equals("<FuncFParams>")){FuncFParams(ast);}
+        else if(ast.getContent().equals("<FuncFParam>")){FuncFParam(ast);}
         else if(ast.getContent().equals("<MainFuncDef>")){MainFuncDef(ast);}
         else if(ast.getContent().equals("<Block>")){Block(ast);}
         else if(ast.getContent().equals("<Stmt>")){Stmt(ast);}
         else if(ast.getContent().equals("<Number>")){Number1(ast);}
         else if(ast.getContent().equals("<Exp>")){Exp(ast);}
         else if(ast.getContent().equals("<LVal>")){LVal(ast);}
+        else if(ast.getContent().equals("<FuncRParams>")){FuncRParams(ast);}
         else if(ast.getContent().equals("<PrimaryExp>")){PrimaryExp(ast);}
         else if(ast.getContent().equals("<UnaryExp>")){UnaryExp(ast);}
         else if(ast.getContent().equals("<MulExp>")){AddMulExp(ast);}
@@ -63,19 +68,29 @@ public class Generator{
         ArrayList<AstNode> a=ast.getChild();
         AstNode ident = a.get(0);
         KeyValue k=ident.getKey();
+        if(level!=0){
+            output(tags()+"%v"+this.regId+" = alloca i32\n");
+            ident.setValue("%v"+this.regId);
+            ident.setRegId(this.regId);
+            this.regId++;
+        }
         if(a.size()==3){
             k.setDim(0);
             generate(a.get(2));
             k.setIntVal(a.get(2).getKey().getIntVal());
-            ident.setValue(a.get(2).getValue());
             if(level==0){
                 output("@"+ident.getContent()+" = dso_local global i32 "+k.getIntVal()+"\n");
-                global.put(ident.getContent(),ident);
             }
             else{
-                ident.setLevel(this.level);
-                stack.add(ident);
+                output(tags()+"store i32 "+a.get(2).getValue()+", i32* %v"+ident.getRegId()+"\n");
             }
+        }
+        if(level==0){
+            global.put(ident.getContent(),ident);
+        }
+        else{
+            ident.setLevel(this.level);
+            stack.add(ident);
         }
     }
     public void ConstInitVal(AstNode ast){
@@ -132,18 +147,77 @@ public class Generator{
             ast.setValue(a.get(0).getValue());
         }
     }
+    public void FuncDef(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        String Type = a.get(0).getChild().get(0).getContent();
+        AstNode ident = a.get(1);
+        if(Type.equals("int")){Type="i32";}
+        else if(Type.equals("void")){Type="void";}
+        ident.setReturnType(Type);
+        output("define dso_local "+Type+" @"+ident.getContent());
+        global.put(ident.getContent(),ident);
+        if(a.get(2).getContent().equals("(")){
+            output("(");
+            if(a.get(4).getContent().equals(")")){
+                generate(a.get(3));
+                output(") {\n");
+                generate(a.get(5));
+            }
+            else{
+                output(") {\n");
+                generate(a.get(4));
+            }
+        }
+        if(Type.equals("void")){
+            this.nowtag+=1;
+            output(tags()+"ret void\n");
+            this.nowtag-=1;
+        }
+        output("}\n");
+
+    }
+    public void FuncFParams(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        generate(a.get(0));
+        for(int i=2;i<a.size();i+=2){
+            output(", ");
+            generate(a.get(i));
+        }
+    }
+    public void FuncFParam(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        AstNode ident = a.get(1);
+        ident.setLevel(1);
+        if(a.size()==2){
+            output("i32 %v"+this.regId);
+            ident.setValue("%v"+this.regId);
+            this.regId++;
+            stack.add(ident);
+        }
+
+    }
     public void MainFuncDef(AstNode ast){
-        output("\ndefine dso_local i32 @main() ");
+        output("\ndefine dso_local i32 @main() {\n");
         generate(ast.getChild().get(4));//Block
+        output("}\n");
     }
     public void Block(AstNode ast){
         for(int i=0;i<ast.getChild().size();i++){
             if(ast.getChild().get(i).getContent().equals("{")){
                 if(level==0){
-                    output(tags()+"{\n");
                     nowtag+=1;
                 }
                 level+=1;
+                if(level==1){
+                    for(int j=stack.size()-1;j>=0;j--){
+                        if(stack.get(j).getRegId()==0&&stack.get(j).getLevel()==1){
+                            output(tags()+"%v"+this.regId+" = alloca i32\n");
+                            stack.get(j).setRegId(this.regId);
+                            output(tags()+"store i32 "+stack.get(j).getValue()+", i32* %v"+stack.get(j).getRegId()+"\n");
+                            this.regId++;
+                        }
+                    }
+                }
             }
             else if(ast.getChild().get(i).getContent().equals("}")){
                 for(int j=stack.size()-1;j>=0;j--){
@@ -152,7 +226,6 @@ public class Generator{
                 level-=1;
                 if(level==0){
                     nowtag-=1;
-                    output(tags()+"}\n");
                 }
             }
             else{generate(ast.getChild().get(i));}
@@ -163,7 +236,6 @@ public class Generator{
         if(a.get(0).getContent().equals("<Block>")){generate(a.get(0));}
         if(a.get(0).getContent().equals("return")){
             if(a.get(1).getContent().equals(";")){
-                output(tags()+"ret void\n");
             }
             else{
                 generate(a.get(1));//Exp
@@ -281,6 +353,38 @@ public class Generator{
             generate(a.get(0));//PrimaryExp
             ast.setValue(a.get(0).getValue());
         }
+        else if(a.size()>2&&a.get(1).getContent().equals("(")){
+            AstNode ident=a.get(0);
+            String identName = ident.getContent();
+            AstNode identGlobe=global.get(identName);
+            ident.setReturnType(identGlobe.getReturnType());
+
+            if(a.get(2).getContent().equals(")")){
+                output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"()\n");
+                ast.setValue("%v"+this.regId);
+                this.regId++;
+            }
+            else{
+                generate(a.get(2));
+                output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"("+a.get(2).getValue()+")\n");
+                ast.setValue("%v"+this.regId);
+                this.regId++;
+            };
+
+        }
+    }
+    public void FuncRParams(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        generate(a.get(0));
+        String Value = ast.getValue();
+        Value ="i32 "+a.get(0).getValue();
+        for(int i=2;i<a.size();i+=2){
+            generate(a.get(i));
+        }
+        for(int i=2;i<a.size();i+=2){
+            Value = Value +", i32 "+a.get(i).getValue();
+        }
+        ast.setValue(Value);
     }
     public void PrimaryExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();

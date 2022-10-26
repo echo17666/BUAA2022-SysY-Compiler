@@ -1,8 +1,13 @@
-int a = 5;
-const int d=4;
+int func1() {
+    return 555;
+}
+
+int func2() {
+    return 111;
+}
+
 int main() {
-    int b = 0;
-    b=getint();
-    printf("%d",a + b*d);
+    int a = func1();
+    printf("xxx%d\n",a - func2());
     return 0;
 }

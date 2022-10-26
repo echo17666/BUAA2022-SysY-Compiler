@@ -9,6 +9,7 @@ public class AstNode{
     int regId=0;
     int level=0;
     String value="";
+    String returnType="";
     KeyValue key = new KeyValue();
     public AstNode(String content){
         this.content=content;
@@ -27,6 +28,14 @@ public class AstNode{
 
     public void setLevel(int level){
         this.level=level;
+    }
+
+    public String getReturnType(){
+        return returnType;
+    }
+
+    public void setReturnType(String returnType){
+        this.returnType=returnType;
     }
 
     public void setFatherAst(AstNode fatherAst){
