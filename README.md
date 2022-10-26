@@ -7,3 +7,7 @@
 - 2022.9.21 Finished Syntax analysis
 
 - 2022.10.7 Finished Semantic analysis & Error handling
+
+- 2022.10.21 Reconstruct Syntax analysis(SyntaxProcedure2: add AstTree)
+
+- 2022.10.26 Finished LLVM IR generate
