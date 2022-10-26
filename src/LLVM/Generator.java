@@ -119,17 +119,24 @@ public class Generator{
                 ident.setRegId(this.regId);
                 this.regId++;
             }
+            k.setDim(0);
             if(a.size()==3){
-                k.setDim(0);
                 generate(a.get(2));
                 k.setIntVal(a.get(2).getKey().getIntVal());
-                if(level==0){
-                    output("@"+ident.getContent()+" = dso_local global i32 "+k.getIntVal()+"\n");
-                }
-                else{
+                if(level!=0){
                     output(tags()+"store i32 "+a.get(2).getValue()+", i32* %v"+ident.getRegId()+"\n");
                 }
             }
+            else if(a.size()==1){
+                k.setIntVal("0");
+            }
+            if(level==0){
+                output("@"+ident.getContent()+" = dso_local global i32 "+k.getIntVal()+"\n");
+            }
+
+
+
+            ident.setKey(k);
             if(level==0){
                 global.put(ident.getContent(),ident);
             }
@@ -293,9 +300,17 @@ public class Generator{
                 check=1;
                 break;
             }
-
         }
         if(check==0){
+            if(level>=1){
+                output(tags()+"%v"+this.regId+" = alloca i32"+"\n");
+                ident.setValue("%v"+this.regId);
+                ident.setRegId(this.regId);
+                ident.setLevel(this.level);
+                ast.setRegId(ident.getRegId());
+                stack.add(ident);
+                this.regId++;
+            }
             output(tags()+"%v"+this.regId+" = load i32, i32* "+"@"+identName+"\n");
             ast.setValue("%v"+this.regId);
             this.regId++;

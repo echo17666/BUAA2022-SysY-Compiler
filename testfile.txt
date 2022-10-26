@@ -1,93 +1,115 @@
-// {Decl}
-const int a_c_num_1 = 1;
-const int a_c_num_2 = 2, a_c_num_3 = 3;
-const int a_c_num_4 = 4, a_c_num_5 = 5, a_c_num_6 = 6;
-int a_v_num;
-int a_v_num_1 = 1, a_v_num_2 = 2;
-
-// {FuncDef}
 /*
-int getint() {
-    int n;
-    scanf("%d", &n);
-    return n;
-}
+// Created by emilyu on 2022/9/6.
+// C
 */
-void non_param_func() {
-    {}
-    return ;
-}
+const int Mod = 389, N = 100005;
+int a_to_the_a, cnt = 0;
+int n;
 
-int one_param_func(int a) {
-    int n;
-    int n1 = 1, n2 = 2;
-    return a + 1;
-}
-
-int two_param_func(int a1, int a2) {
-    return a1 + a2;
-}
-
-int more_than_two_param_func(int a1, int a2, int a3) {
-    return a1 + a2 - a3;
-}
-
-// MainFuncDef
-int main() {
-
-// decl
-    const int m_c_num1 = 1, m_c_num2 = 2;
-    int m_v_num1 = 1;
-    int m_v_num;
-    int m_v_num2;
-    int m_v_num_3 = 3, m_v_num_4 = 4, m_v_num_5 = 5;
-
-// stmt
-
-    // LVal = Exp;
-    m_v_num2 = 2;
-
-    // Block
-    {
-        // [Exp]
-        ;
-        1-1;
-        non_param_func();
-        more_than_two_param_func(m_v_num_3, m_v_num_4, m_v_num_5);
+void move(int a, int b) {                           // void func with params
+    cnt = cnt + 1;
+    if (cnt % Mod == 0) {
+        printf("funcTest: move disk from %d to %d\n", a, b);
     }
+}
 
+void hanoi(int n, int a, int b, int c) {            // void recursion
+    if (n == 1) {
+        move(a, c);
+        return;
+    }
+    hanoi(n - 1, a, c, b);
+    move(a, c);
+    hanoi(n - 1, b, a, c);
+}
 
+int qpow(int a, int b) {                            // int func with params
+    int ans = 1;
 
-    if (/*Cond*/1) {
-        int if_v_num3 = m_v_num2 + 1;
-        m_v_num = two_param_func(m_c_num1, if_v_num3);
-        if (m_v_num * m_c_num1 == m_c_num1 + if_v_num3 * 1) {
-            non_param_func();
-        } else {
-            a_v_num = a_c_num_1;
-            while (a_v_num <= a_c_num_3) {
-                a_v_num = one_param_func(a_v_num);
-                if (1 && a_v_num == a_c_num_3) {
-                    break;
-                }
-                // Cond
-                if (!0) {
-                    continue;
-                }
-            }
+    while (b) {
+        b = b / 2;
+        a = (a * a) % Mod;
+        if (b % 2) {
+            ans = (ans * a) % Mod;
         }
     }
 
-    // exp
-    m_v_num = (1) * one_param_func(a_c_num_1) / (a_c_num_2 + 2) % +-a_c_num_3 - +2 + -3;
+    return ans;
+}
 
-    // getint
-    m_v_num = getint();
+int gcd(int a, int b) {                             // int recursion
+    if (!b) {
+        return a;
+    }
+    return gcd(b, a % b);
+}
 
-    // printf
-    printf("20373260\n");
-    printf("a_c_num_1:%d\n", a_c_num_1);
-    printf("a_c_num_2:%d, a_v_num_2:%d\n", a_c_num_2, a_v_num_2);
+int testExp() {                                     // int func without param
+    a_to_the_a = n * n;
+    int k = N / n;                                  // Exp
+    n * n / n + n - n;                              // single exp without using its value;
 
+    int b = a_to_the_a + 1;
+    int c = - + - +2147483647, d = -1 - c;          // extreme nums
+    int t = (((1 - + -a_to_the_a) * b / 3 - 2 + N) % Mod);      // useless braces
+    int e = qpow(a_to_the_a, b);
+
+    {                                               // block
+        b = 10;
+        c = 0;
+        {
+            b = 7;
+            c = 8;
+            printf("blockTest: 7 == %d, 8 == %d\n", b, c);
+        }
+
+        int i = 0;
+        while (1) {
+            i = i + 1;
+            if (i % 2 != 0) {
+                continue;
+            }
+            if (i >= b) {
+                break;
+            } else {
+                if (c < 10) {
+                    c = c + i;
+                } else {
+                    c = c - i;
+                }
+            }
+        }
+        printf("blockTest: 5 == %d, 12 == %d\n", b, c);
+    }
+
+    int f = n, g = 0;
+    if (f < 0) {
+        g = 10;
+    } else {
+        if (f > 10) {
+            g = 20;
+        } else {
+            if (f == n) {
+                g = 30;
+            }
+        }
+    }
+    if (f <= 10) {
+        g = g + f;
+    }
+
+    printf("Exptest: %d %d %d %d %d", a_to_the_a, b, c, d, e);  // no \n
+    printf(" %d %d %d\n", f, g, t);
+
+    return gcd(f, g);                                    // a stmt not simplified
+}
+
+int main() {
+    printf("20373569 the mafia~\n");
+
+    n = getint();
+    hanoi(n, 1, 2, 3);
+
+    printf("Exptest: %d\n", testExp());
     return 0;
 }
