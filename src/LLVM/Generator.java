@@ -10,12 +10,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Generator{
-    int current=0;
     int level=0;
     AstNode Rootast = null;
     int regId=1;
-    int FuncRegId = 0;
-    String out="";
     int nowtag=0;
     ArrayList <AstNode> stack = new ArrayList<>();
     HashMap <String,AstNode> global= new HashMap();
@@ -209,8 +206,9 @@ public class Generator{
         output("}\n");
     }
     public void Block(AstNode ast){
-        for(int i=0;i<ast.getChild().size();i++){
-            if(ast.getChild().get(i).getContent().equals("{")){
+        ArrayList<AstNode> a=ast.getChild();
+        for(int i=0;i<a.size();i++){
+            if(a.get(i).getContent().equals("{")){
                 if(level==0){
                     nowtag+=1;
                 }
@@ -226,7 +224,7 @@ public class Generator{
                     }
                 }
             }
-            else if(ast.getChild().get(i).getContent().equals("}")){
+            else if(a.get(i).getContent().equals("}")){
                 for(int j=stack.size()-1;j>=0;j--){
                     if(stack.get(j).getLevel()==this.level){stack.remove(j);}
                 }
@@ -235,7 +233,7 @@ public class Generator{
                     nowtag-=1;
                 }
             }
-            else{generate(ast.getChild().get(i));}
+            else{generate(a.get(i));}
         }
     }
     public void Stmt(AstNode ast){

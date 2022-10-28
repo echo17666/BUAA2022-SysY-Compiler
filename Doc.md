@@ -22,6 +22,12 @@
   - [4.5 语法分析小重构](#45-语法分析小重构)
     - [1.抽象语法树的构建](#1抽象语法树的构建)
     - [2.抽象语法树的生成](#2抽象语法树的生成)
+  - [5.错误处理](#5错误处理)
+  - [6.代码生成1](#6代码生成1)
+    - [1.总述](#1总述-2)
+    - [2.编码前的设计](#2编码前的设计-2)
+      - [1.总设计](#1总设计)
+      - [2.main函数（Lab1）](#2main函数lab1)
 
 <!-- /TOC -->
 ## 1.参考编译器介绍
@@ -852,6 +858,127 @@ LLvmMain llvmMain = new LLvmMain(syntax.getAst());
 
 自此，**语法树构建完成**，接下来进行 **`代码生成`** 。
 
+## 5.错误处理
 
+## 6.代码生成1
 
+### 1.总述
+本次 **`代码生成`** 是**分值最高**，也是前期**调研时间最长**的一部分。本次采用的是 **`LLVM IR`** 作为目标代码的生成，~~打算选 **`MIPS`** 和 **`PCode`** 的佬可以退了~~。尤其是 **`代码生成1`** 只有 **3周** 时间，给的时间还是太少了，**调研了一整周时间**，期间做了上述 **`语法分析的重构`** ，第二周才开始写 **`代码生成`** 并在两天内完成了 **`代码生成1`**，所以前期调研工作 **十分重要**。这里给出个人的一点点**调研结果**
 
+**`PCode`** 需要做的是两步，第一步是 **翻译为`中间代码`** ，第二部是 **将中间代码`解释执行`**，即给程序标准输入后，要得到标准输出。PCode的优势显而易见，就是所有东西**理论都讲过**，例如书上的 **`三元式`/`四元式`** ，而且中间代码**不做考核**。也就是说，中间代码是三元式还是两元半式**无所谓**，完全看个人喜好，只要最后将其**解释运行**即可。代码方面只需要权衡 **`翻译器`** 和 **`解释器`** 哪个好做就行。
+
+**`LLVM`** 相比就简单不少，首先目标代码就是中间代码，只需要做 **`翻译器`** ，平台的评测机不是对文本进行比对，而是将你生成的LLVM中间代码**喂给评测机去解释运行**，所以即使生成代码和要求不一样，结果也可能是对的。LLVM的好处包括但不限于：**代码生成方式多样**，寄存器标号可以**不按顺序**，且可以**无限叠加**，有一套**完整的教程**等。唯一的问题是需要去自学LLVM的语法。
+
+**`MIPS`** 一开始可能就不在考虑范围内，所以调研可能不算全面，~~写 **`MIPS`** 的佬应该也不会看我的博客~~。 **`MIPS`** 和 **`PCode`** 相同，都需要 **`翻译器`** 和 **`解释器`** ，但与 **`PCode`** 不同的是， **`MIPS`** 的中间代码必须是 **`规范的四元式`** ，因为后面代码优化需要考察中间代码。而且MIPS寄存器标号**只有32个**，还要用寄存器的话就要放到栈内。好处就是可以多去卷一卷竞速的分数。
+
+在调研一周之后，果断投入 **`LLVM`** 的怀抱 
+
+### 2.编码前的设计
+由于LLVM的设计直接参考[往届软院编译实验](https://buaa-se-compiling.github.io/miniSysY-tutorial/pre/llvm.html)，所以编码设计顺序也按照上述实验来分析。 **`代码生成1`** 的实验包含**Lab1，2，3，5，8**。
+
+#### 1.总设计
+与前面一样，我们为代码生成设计**入口函数**
+```java
+//Compiler.java
+LLvmMain llvmMain = new LLvmMain(syntax.getAst());
+llvmMain.generate();
+//LLvmMain.java
+public class LLvmMain{
+    AstNode compUnit = null;
+    FileWriter fw1 =new FileWriter("llvm_ir.txt", false);
+    Generator generator=null;
+    public LLvmMain(AstNode t) throws IOException{this.compUnit=t;}
+    public void generate(){
+        generator = new Generator(compUnit);
+        generator.init();
+        generator.generating();
+    }
+}
+//Generator.java
+public class Generator{
+    int level=0; //记录当前层级
+    AstNode Rootast = null; //根节点
+    int regId=1; //寄存器标号
+    ArrayList <AstNode> stack = new ArrayList<>(); //栈式符号表
+    HashMap <String,AstNode> global= new HashMap(); //全局符号表
+    public Generator(AstNode ast){this.Rootast=ast;} //构造函数
+    public void generating(){generate(this.Rootast);} //生成LLVM代码
+    public void init(){ //生成固定的调用函数
+        FileWriter fw=null;
+        try {fw=new FileWriter("llvm_ir.txt",true);}
+        catch (IOException e) {e.printStackTrace();}
+        PrintWriter pw=new PrintWriter(fw);
+        pw.println("declare i32 @getint()");pw.flush();
+        pw.println("declare void @putint(i32)");pw.flush();
+        pw.println("declare void @putch(i32)");pw.flush();
+        pw.println("declare void @putstr(i8*)");pw.flush();
+    }
+}
+```
+然后我们采用的是 **`遍历语法树`** 的方式去生成代码。其实可以完全按照**递归下降子程序**那种方法，即**一个文法一个函数**，然后函数套函数那么去写，但是由于代码生成是**一步步去实现**的，而且在递归下降子程序的时候发现，没有写完所有文法函数前我们**无法运行主程序去查看正确与否**，所以最后我们采用的是一边遍历一边进入的方式，即写一个文法调用一个文法，具体如下：
+```java
+public void generate(AstNode ast){
+    if(ast.getContent().equals("<ConstDef>")){ConstDef(ast);}
+    else if(ast.getContent().equals("<ConstInitVal>")){ConstInitVal(ast);}
+    else if(ast.getContent().equals("<ConstExp>")){ConstExp(ast);}
+    else if(ast.getContent().equals("<VarDef>")){VarDef(ast);}
+    else if(ast.getContent().equals("<InitVal>")){InitVal(ast);}
+    else if(ast.getContent().equals("<FuncDef>")){FuncDef(ast);}
+    ···
+    //如果那些文法对生成中间代码无用，则继续遍历
+    else{
+        for(int i=0;i<ast.getChild().size();i++){
+            generate(ast.getChild().get(i));
+        }
+    }
+}
+```
+这样即可做到写一个Lab检查一个Lab，对于**检查错误**和**阶段生成**都有利，故采用这种写法。
+
+#### 2.main函数（Lab1）
+我们首先观察样例输入和输出
+```c
+int main() {
+    return 123;
+}
+```
+```LLVM
+define dso_local i32 @main(){
+    ret i32 123
+}
+```
+可以看到，对于 **`main()`函数** ，LLVM的生成代码**十分固定**，即**define dso_local i32 @main()**。所以我们遍历语法树的时候，只要读到 **`< MainFUncDef >`** 结点，则直接输出。顺带一提， **`LLVM`** 中，只有**函数生成**时需要添加 **`{}`** ，函数中的 **`Block`** 不需要添加 **`{}`** ，即 **`int main(){{{{{{return 0;}}}}}}`** 虽然符合文法要求，但是生成的中间代码和上述一摸一样，只有一个**大括号**。所以大括号的输出可以直接放到 **`FuncDef/MainFuncDef`** 内。
+```java
+public void MainFuncDef(AstNode ast){
+    output("\ndefine dso_local i32 @main() {\n");
+    generate(ast.getChild().get(4));//Block
+    output("}\n");
+}
+```
+> 这里如果写Block()就不可避免地要去写一个Block()函数，然后一层套一层地把函数都写完。然而如果写generate()，则不影响程序正常运行，方便debug和按阶段一步步写函数。
+
+紧接着就是Block()和Stmt()中的return了
+```java
+public void Block(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    for(int i=0;i<a.size();i++){
+        if(a.get(i).getContent().equals("{")){···}//符号表相关操作
+        else if(a.get(i).getContent().equals("}")){···}//符号表相关操作
+        else{generate(a.get(i));}//遍历，无需判断是Stmt还是ConstDecl还是VarDecl
+    }
+}
+public void Stmt(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    if(a.get(0).getContent().equals("<Block>")){generate(a.get(0));}
+    if(a.get(0).getContent().equals("return")){
+        if(a.get(1).getContent().equals(";")){}
+        else{
+            generate(a.get(1));//Exp
+            output(tags()+"ret i32 "+a.get(1).getValue()+"\n");
+        }
+    }   
+}
+```
+我们发现， **`return`**  语句的输出是 **`ret i32`** ，而 **`return`** 后面的表达式是 **`Exp()`** ，这就需要我们一级级调用，找到根节点，然后通过综合属性从叶结点一步步传到根节点。
+
+累了，之后再写（-A-）
