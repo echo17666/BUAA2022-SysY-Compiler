@@ -20,7 +20,8 @@
     - [2.repeat/until](#2repeatuntil)
     - [3.Hexadecimal](#3hexadecimal)
   - [4.5 语法分析小重构](#45-语法分析小重构)
-    - [1.抽象语法树的生成](#1抽象语法树的生成)
+    - [1.抽象语法树的构建](#1抽象语法树的构建)
+    - [2.抽象语法树的生成](#2抽象语法树的生成)
 
 <!-- /TOC -->
 ## 1.参考编译器介绍
@@ -717,7 +718,7 @@ else{
 ## 4.5 语法分析小重构
 由于之后的步骤是 **`语义分析`** 和 **`中间代码`** 生成部分，这两部分的输入均需要采用 **`语法分析`** 的输出，故我们需要进行小规模重构，方便 **`中间代码`** 的生成。
 
-### 1.抽象语法树的生成
+### 1.抽象语法树的构建
 在 **`语法分析`** 阶段，我们实际上做的就是用 **`词法分析`** 分出来的**Token**去匹配一条条文法。而现在，我们需要建立一个树，使得我们可以通过一条文法的**左部**找到对应的**右部**，然后通过**右部**找到对应的**Token**，这样我们就可以做到通过一条文法的根节点找到其下的所有**Token**。
 
 接下来就是抽象语法树 **（AST）** 的建立，即如何去构建一个类似于语法树的数据结构，这个构建的方式因人而异。如果按照理论上的语法树构建，那么我们不难发现，这棵树上的结点中，叶结点一定是 **`终结符`** ，即词法分析分出来的Token，而非叶结点则一定是那张~~又臭又长的~~文法表的**左部**，例如，对于 $1+-2$ 这个表达式，我们可以构建出这样一棵树：
@@ -757,7 +758,13 @@ INTCON 2
 ```
 如果稍加观察，不难发现，**语法分析的输出**其实可以看做语法树的**前序遍历**。所以，我们可以将原先的 **`output()`** 函数替换为**增加一个结点**，最后对树进行一个**前序遍历**即可。
 
-语法树的构建的数据结构因人而异，这里采用的是 **`ArrayList`** 方式。创建结点类如下
+语法树的构建的数据结构因人而异，这里分享一种我的构造方法。我采用的是 **`ArrayList`** 方式。在 **`AstNode`** 类内包含一个**ArrayList**，这个**ArrayList**内每一项都是一个**AstNode**，由此可以构建一个类似于 **`树`** 的结构。
+
+![语法树构建例子](image/1.png)
+
+### 2.抽象语法树的生成
+
+创建**AstNode**结点类如下：
 ```java
 public class AstNode{
     String content="";
@@ -765,27 +772,43 @@ public class AstNode{
     public AstNode(String content){
         this.content=content;
     }
+    /*添加子节点*/
     public void addNode(AstNode a){
         child.add(a);
     }
 }
 ```
-然后对于原先的语法分析函数进行修改，每个函数传入的结点为**父节点**，然后在函数内部创建**子节点**，最后将子节点加入父节点的子节点列表中，最后返回父节点即可。
+在语法分析中，我们可以先设立一个根节点，然后再在根节点下建立语法树
 ```java
-public void MainFuncDef(/*new*/AstNode ast){
+AstNode RootAst = new AstNode("<CompUnit>");
+public void analyze(){
+        CompUnit(RootAst);//语法分析
+        outputAst(RootAst);//遍历输出语法树
+    }
+
+```
+然后对于原先的语法分析函数进行修改，每个函数传入的结点为**父节点**，然后在函数内部创建**子节点**，最后将子节点加入父节点的子节点列表中，最后返回父节点即可。
+
+总结下来就是， **`自顶向下`** 进行 **`语法分析`** ，再 **`自底向上`** 构建 **`语法树`**
+
+> 注：新增*new*的是在原基础上新增的代码，其余全是**原来的代码**
+```java
+public void MainFuncDef(/*new*/AstNode ast/*该节点的父节点，例如，MainFuncDef的父节点就是CompUnit*/){
     /*new*/
-    AstNode a =new AstNode("<MainFuncDef>");
-    if(sym.equals("int")){nextsym(a);
-        if(sym.equals("main")&&getnextsym().equals("(")&&getnextnextsy().equals(")")){nextsym(a);nextsym(a);nextsym(a);Block(a);}
+    AstNode a =new AstNode("<MainFuncDef>");//新建该结点，即MainFuncDef结点a
+    if(sym.equals("int")){nextsym(a);//在a结点下添加子节点int
+        if(sym.equals("main")&&getnextsym().equals("(")&&getnextnextsy().equals(")")){nextsym(a);nextsym(a);nextsym(a);Block(a);
+        //在a结点下添加子节点main，(，)和Block，之后Block的根节点即为a，即Block在MainFuncDef下建立树
+        }
         else{}
     }
     else{}
     /*new*/
-    ast.addNode(a);
+    ast.addNode(a);//把已经建完的MainFuncDef树加到父节点CompUnit下
     output("<MainFuncDef>");//这个output其实已经没用了
 }
 ```
-然后，我们对 **`nextsym()`** 函数进行修改，使得 **`非终结符`** 可以加入到语法树中
+然后，我们对 **`nextsym()`** 函数进行修改，使得 **`非终结符`** 可以加入到语法树中，即达到**自底向上建立语法树**的目的
 ```java
 public void nextsym(AstNode ast){
     output(this.sym);
@@ -797,38 +820,38 @@ public void nextsym(AstNode ast){
     }
 }
 ```
-然后语法分析的输出即为语法树的前序遍历
+然后语法分析的输出即为 **语法树的`前序遍历`**
 ```java
 public void output(String sym){/*弃用*/}
 public void outputAst(AstNode ast){
-        ···
-        if(ast.getChild().size()!=0){
-            for(int i=0;i<ast.getChild().size();i++){
-                outputAst(ast.getChild().get(i));
-            }
-            pw.println(ast.getContent());
-            pw.flush();
+    ···
+    if(ast.getChild().size()!=0){
+        for(int i=0;i<ast.getChild().size();i++){
+            outputAst(ast.getChild().get(i));
         }
-        else{
-            if(ReservedCharacter.containsKey(ast.getContent())){
-            pw.println(ReservedCharacter.get(ast.getContent())+" "+ast.getContent());
-            pw.flush();
-        }
-        else{
-            if(ast.getContent().charAt(0)=='"'){
-                pw.println("STRCON "+ast.getContent());
-                pw.flush();
-            }
-            else if(isNumber(ast.getContent())){
-                pw.println("INTCON "+ast.getContent());
-                pw.flush();
-            }
-            else{
-                pw.println("IDENFR "+ast.getContent());
-                pw.flush();
-            }
-            }
-        }
-
+        /*先遍历再输出结点内容，即前序遍历*/
+        pw.println(ast.getContent());
+        pw.flush();
     }
+    else{/*输出终结符内容*/}
+}
 ```
+最后建立语法树**输出接口**，供 **`代码生成`** 使用
+```java
+// SyntaxProcedure2.java
+public AstNode getAst(){
+    return this.RootAst;
+}
+//SyntaxMain.java
+public AstNode getAst(){
+    return syntaxProcedure.getAst();
+}
+//Compiler.java
+LLvmMain llvmMain = new LLvmMain(syntax.getAst());
+```
+
+自此，**语法树构建完成**，接下来进行 **`代码生成`** 。
+
+
+
+
