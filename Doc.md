@@ -19,6 +19,8 @@
     - [1.题目说明](#1题目说明)
     - [2.repeat/until](#2repeatuntil)
     - [3.Hexadecimal](#3hexadecimal)
+  - [4.5 语法分析小重构](#45-语法分析小重构)
+    - [1.抽象语法树的生成](#1抽象语法树的生成)
 
 <!-- /TOC -->
 ## 1.参考编译器介绍
@@ -711,3 +713,122 @@ else{
 }
 ```
 至此，十个样例点全部通过，考试完成，如果顺利的话**15-20分钟**就可以完成，所以不用慌张。
+
+## 4.5 语法分析小重构
+由于之后的步骤是 **`语义分析`** 和 **`中间代码`** 生成部分，这两部分的输入均需要采用 **`语法分析`** 的输出，故我们需要进行小规模重构，方便 **`中间代码`** 的生成。
+
+### 1.抽象语法树的生成
+在 **`语法分析`** 阶段，我们实际上做的就是用 **`词法分析`** 分出来的**Token**去匹配一条条文法。而现在，我们需要建立一个树，使得我们可以通过一条文法的**左部**找到对应的**右部**，然后通过**右部**找到对应的**Token**，这样我们就可以做到通过一条文法的根节点找到其下的所有**Token**。
+
+接下来就是抽象语法树 **（AST）** 的建立，即如何去构建一个类似于语法树的数据结构，这个构建的方式因人而异。如果按照理论上的语法树构建，那么我们不难发现，这棵树上的结点中，叶结点一定是 **`终结符`** ，即词法分析分出来的Token，而非叶结点则一定是那张~~又臭又长的~~文法表的**左部**，例如，对于 $1+-2$ 这个表达式，我们可以构建出这样一棵树：
+```java
+                   <AddExp>
+           ┌──────────┼─────────┐
+        <AddExp>     "+"     <MulExp>
+           |                    |
+        <MulExp>            <UnaryExp>
+           |              ┌─────┴─────┐
+       <UnaryExp>     <UnaryOp>   <UnaryExp>
+           |              |           | 
+      <PrimaryExp>       "-"     <PrimaryExp>
+           |                          |
+        <Number>                   <Number>
+           |                          |
+          "1"                        "2"
+```
+不难发现，如果 $1+-2$ 放到我们 **`语法分析`** 去输出，其结果为
+```java
+INTCON 1
+<Number>
+<PrimaryExp>
+<UnaryExp>
+<MulExp>
+<AddExp>
+PLUS +
+MINU -
+<UnaryOp>
+INTCON 2
+<Number>
+<PrimaryExp>
+<UnaryExp>
+<UnaryExp>
+<MulExp>
+<AddExp>
+```
+如果稍加观察，不难发现，**语法分析的输出**其实可以看做语法树的**前序遍历**。所以，我们可以将原先的 **`output()`** 函数替换为**增加一个结点**，最后对树进行一个**前序遍历**即可。
+
+语法树的构建的数据结构因人而异，这里采用的是 **`ArrayList`** 方式。创建结点类如下
+```java
+public class AstNode{
+    String content="";
+    ArrayList<AstNode> child = new ArrayList<AstNode>();
+    public AstNode(String content){
+        this.content=content;
+    }
+    public void addNode(AstNode a){
+        child.add(a);
+    }
+}
+```
+然后对于原先的语法分析函数进行修改，每个函数传入的结点为**父节点**，然后在函数内部创建**子节点**，最后将子节点加入父节点的子节点列表中，最后返回父节点即可。
+```java
+public void MainFuncDef(/*new*/AstNode ast){
+    /*new*/
+    AstNode a =new AstNode("<MainFuncDef>");
+    if(sym.equals("int")){nextsym(a);
+        if(sym.equals("main")&&getnextsym().equals("(")&&getnextnextsy().equals(")")){nextsym(a);nextsym(a);nextsym(a);Block(a);}
+        else{}
+    }
+    else{}
+    /*new*/
+    ast.addNode(a);
+    output("<MainFuncDef>");//这个output其实已经没用了
+}
+```
+然后，我们对 **`nextsym()`** 函数进行修改，使得 **`非终结符`** 可以加入到语法树中
+```java
+public void nextsym(AstNode ast){
+    output(this.sym);
+    /*new*/
+    ast.addNode(new AstNode(this.sym));
+    if(this.current<bank.size()-1){
+        this.current+=1;
+        this.sym=bank.get(this.current).getContent();
+    }
+}
+```
+然后语法分析的输出即为语法树的前序遍历
+```java
+public void output(String sym){/*弃用*/}
+public void outputAst(AstNode ast){
+        ···
+        if(ast.getChild().size()!=0){
+            for(int i=0;i<ast.getChild().size();i++){
+                outputAst(ast.getChild().get(i));
+            }
+            pw.println(ast.getContent());
+            pw.flush();
+        }
+        else{
+            if(ReservedCharacter.containsKey(ast.getContent())){
+            pw.println(ReservedCharacter.get(ast.getContent())+" "+ast.getContent());
+            pw.flush();
+        }
+        else{
+            if(ast.getContent().charAt(0)=='"'){
+                pw.println("STRCON "+ast.getContent());
+                pw.flush();
+            }
+            else if(isNumber(ast.getContent())){
+                pw.println("INTCON "+ast.getContent());
+                pw.flush();
+            }
+            else{
+                pw.println("IDENFR "+ast.getContent());
+                pw.flush();
+            }
+            }
+        }
+
+    }
+```
