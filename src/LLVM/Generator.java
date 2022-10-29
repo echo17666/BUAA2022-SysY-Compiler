@@ -49,12 +49,17 @@ public class Generator{
         else if(ast.getContent().equals("<Stmt>")){Stmt(ast);}
         else if(ast.getContent().equals("<Number>")){Number1(ast);}
         else if(ast.getContent().equals("<Exp>")){Exp(ast);}
+        else if(ast.getContent().equals("<Cond>")){Cond(ast);}
         else if(ast.getContent().equals("<LVal>")){LVal(ast);}
         else if(ast.getContent().equals("<FuncRParams>")){FuncRParams(ast);}
         else if(ast.getContent().equals("<PrimaryExp>")){PrimaryExp(ast);}
         else if(ast.getContent().equals("<UnaryExp>")){UnaryExp(ast);}
         else if(ast.getContent().equals("<MulExp>")){AddMulExp(ast);}
         else if(ast.getContent().equals("<AddExp>")){AddMulExp(ast);}
+        else if(ast.getContent().equals("<RelExp>")){RelEqExp(ast);}
+        else if(ast.getContent().equals("<EqExp>")){RelEqExp(ast);}
+        else if(ast.getContent().equals("<LAndExp>")){LAndExp(ast);}
+        else if(ast.getContent().equals("<LOrExp>")){LOrExp(ast);}
         else{
             for(int i=0;i<ast.getChild().size();i++){
                 generate(ast.getChild().get(i));
@@ -239,7 +244,7 @@ public class Generator{
     public void Stmt(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         if(a.get(0).getContent().equals("<Block>")){generate(a.get(0));}
-        if(a.get(0).getContent().equals("return")){
+        else if(a.get(0).getContent().equals("return")){
             if(a.get(1).getContent().equals(";")){
             }
             else{
@@ -280,6 +285,54 @@ public class Generator{
                 }
             }
         }
+        else if(a.get(0).getContent().equals("if")){
+            output(tags()+"br label %v"+this.regId+"\n");
+            output("\nv"+this.regId+":\n");
+            a.get(2).setYesId(this.regId+1);
+            int YesId = this.regId+1;
+            int NoId=0;
+            int StmtId=0;
+            if(a.size()>5){
+                a.get(2).setNoId(this.regId+2);
+                a.get(2).setStmtId(this.regId+3);
+                a.get(4).setStmtId(this.regId+3);
+                a.get(6).setStmtId(this.regId+3);
+                NoId = this.regId+2;
+                StmtId = this.regId+3;
+                this.regId+=4;
+
+            }
+            else{
+                a.get(2).setNoId(this.regId+2);
+                a.get(2).setStmtId(this.regId+2);
+                a.get(4).setStmtId(this.regId+2);
+                StmtId = this.regId+2;
+                this.regId+=3;
+            }
+            generate(a.get(2));
+            output("\nv"+YesId+":\n");
+            generate(a.get(4));
+            if(a.size()>5){
+                output("\nv"+NoId+":\n");
+                generate(a.get(6));
+            }
+            output("\nv"+StmtId+":\n");
+
+
+        }
+        else if(a.get(0).getContent().equals("while")){
+            output(tags()+"br label %v"+this.regId+"\n");
+            output("\nv"+this.regId+":\n");
+            this.regId++;
+            generate(a.get(2));
+            output(tags()+"br i1 "+a.get(2).getValue()+", label %v"+(this.regId)+", label %v"+(this.regId+1)+"\n");
+            int outID=this.regId;
+            a.get(4).setStmtId(this.regId+1);
+
+        }
+        if(ast.getStmtId()!=0){
+            output(tags()+"br label %v"+ast.getStmtId()+"\n");
+        }
     }
     public void LVal(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
@@ -306,7 +359,9 @@ public class Generator{
                 ident.setRegId(this.regId);
                 ident.setLevel(this.level);
                 ast.setRegId(ident.getRegId());
-                stack.add(ident);
+                if(ast.isInStack()){
+                    stack.add(ident);
+                }
                 this.regId++;
             }
             output(tags()+"%v"+this.regId+" = load i32, i32* "+"@"+identName+"\n");
@@ -318,33 +373,37 @@ public class Generator{
         generate(ast.getChild().get(0));//AddExp
         ast.setValue(ast.getChild().get(0).getValue());
     }
-    public void AddMulExp(AstNode ast){
+    public void Cond(AstNode ast){
+        ast.getChild().get(0).setNoId(ast.getNoId());
+        ast.getChild().get(0).setYesId(ast.getYesId());
+        ast.getChild().get(0).setStmtId(ast.getStmtId());
+        ast.getChild().get(0).setInStack(false);
+        generate(ast.getChild().get(0));//LOrExp
+        ast.setValue("%v"+this.regId);
+        this.regId++;
+    }
+    public void PrimaryExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
-        generate(a.get(0));//AddExp
-        String left=a.get(0).getValue();
-        if(a.size()>1){
-            for(int i=1;i<a.size();i+=2){
-                String op=a.get(i).getContent();
-                generate(a.get(i+1));
-                String right=a.get(i+1).getValue();
-                String opt=Operator(op);
-                if(level>0){
-                    output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
-                    a.get(i+1).setRegId(this.regId);
-                    a.get(i+1).setValue("%v"+this.regId);
-                    this.regId++;
-                }
-                else{
-                    a.get(i+1).setValue(mathCalculate(left,op,right));
-                }
-                left=a.get(i+1).getValue();
-            }
-            ast.setValue(a.get(a.size()-1).getValue());
+
+        if(a.get(0).getContent().equals("<Number>")){
+            generate(a.get(0));//Number
+            ast.setValue(a.get(0).getValue());
         }
-        else{
-            ast.setValue(left);
+        else if(a.get(0).getContent().equals("(")){
+            generate(a.get(1));//Exp
+            ast.setValue(a.get(1).getValue());
+        }
+        else if(a.get(0).getContent().equals("<LVal>")){
+            a.get(0).setInStack(ast.isInStack());
+            generate(a.get(0));//LVal
+            ast.setValue(a.get(0).getValue());
         }
     }
+    public void Number1(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        ast.setValue(a.get(0).getContent());
+    }
+
     public void UnaryExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         if(a.get(0).getContent().equals("<UnaryOp>")){
@@ -361,8 +420,17 @@ public class Generator{
                 }
             }
             else if(a.get(0).getChild().get(0).getContent().equals("+")){ast.setValue(a.get(1).getValue());}
+            else if(a.get(0).getChild().get(0).getContent().equals("!")){
+                output(tags()+"%v"+this.regId+" = icmp eq i32 0, "+a.get(1).getValue()+"\n");
+                this.regId++;
+                output(tags()+"%v"+this.regId+" = sext i1 %v"+(this.regId-1)+" to i32\n");
+                ast.setRegId(this.regId);
+                ast.setValue("%v"+this.regId);
+                this.regId++;
+            }
         }
         else if(a.get(0).getContent().equals("<PrimaryExp>")){
+            a.get(0).setInStack(ast.isInStack());
             generate(a.get(0));//PrimaryExp
             ast.setValue(a.get(0).getValue());
         }
@@ -386,10 +454,11 @@ public class Generator{
 
         }
     }
+
     public void FuncRParams(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         generate(a.get(0));
-        String Value = ast.getValue();
+        String Value;
         Value ="i32 "+a.get(0).getValue();
         for(int i=2;i<a.size();i+=2){
             generate(a.get(i));
@@ -399,30 +468,161 @@ public class Generator{
         }
         ast.setValue(Value);
     }
-    public void PrimaryExp(AstNode ast){
+    public void AddMulExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
+        a.get(0).setInStack(ast.isInStack());
+        generate(a.get(0));//AddExp/MulExp
+        String left=a.get(0).getValue();
+        if(a.size()>1){
+            for(int i=1;i<a.size();i+=2){
+                String op=a.get(i).getContent();
+                a.get(i+1).setInStack(ast.isInStack());
+                generate(a.get(i+1));
+                String right=a.get(i+1).getValue();
+                String opt=Operator(op);
+                if(level>0){
+                    output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
+                    a.get(i+1).setRegId(this.regId);
+                    a.get(i+1).setValue("%v"+this.regId);
+                    this.regId++;
+                }
+                else{
+                    a.get(i+1).setValue(mathCalculate(left,op,right));
+                }
+                left=a.get(i+1).getValue();
+            }
+            ast.setValue(a.get(a.size()-1).getValue());
+        }
+        else{
+            ast.setValue(left);
+        }
+    }
+    public void RelEqExp(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        a.get(0).setInStack(ast.isInStack());
+        generate(a.get(0));//RelExp/EqExp
+        String left=a.get(0).getValue();
+        if(a.size()>1){
+            for(int i=1;i<a.size();i+=2){
+                String op=a.get(i).getContent();
+                a.get(i+1).setInStack(ast.isInStack());
+                generate(a.get(i+1));
+                String right=a.get(i+1).getValue();
+                String opt=Operator(op);
+                if(level>0){
+                    output(tags()+"%v"+this.regId+" = icmp "+opt+" i32 "+left+", "+right+"\n");
+                    this.regId++;
+                    output(tags()+"%v"+this.regId+" = sext i1 %v"+(this.regId-1)+" to i32\n");
+                    a.get(i+1).setRegId(this.regId);
+                    a.get(i+1).setValue("%v"+this.regId);
+                    this.regId++;
+                }
+                else{
+                    a.get(i+1).setValue(mathCalculate(left,op,right));
+                }
+                left=a.get(i+1).getValue();
+            }
+            ast.setValue(a.get(a.size()-1).getValue());
+        }
+        else{
+            ast.setValue(left);
+        }
+    }
+    public void LOrAndExp(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        generate(a.get(0));//LAndExp
+        String left=a.get(0).getValue();
+        if(a.size()>1){
+            for(int i=1;i<a.size();i+=2){
+                String op=a.get(i).getContent();
+                generate(a.get(i+1));
+                String right=a.get(i+1).getValue();
+                String opt=Operator(op);
 
-        if(a.get(0).getContent().equals("<Number>")){
-            generate(a.get(0));//Number
+                output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
+                a.get(i+1).setRegId(this.regId);
+                a.get(i+1).setValue("%v"+this.regId);
+                this.regId++;
+
+                left=a.get(i+1).getValue();
+            }
+            ast.setValue(a.get(a.size()-1).getValue());
+        }
+        else{
+            ast.setValue(left);
+        }
+    }
+    public void LAndExp(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        if(a.size()==1){
+            a.get(0).setInStack(false);
+            generate(a.get(0));
             ast.setValue(a.get(0).getValue());
         }
-        else if(a.get(0).getContent().equals("(")){
-            generate(a.get(1));//Exp
-            ast.setValue(a.get(1).getValue());
+        else{
+            for(int i=0;i<a.size()-2;i+=2){
+                a.get(i).setInStack(false);
+                generate(a.get(i));//LAndExp
+                output(tags()+"%v"+this.regId+" = icmp ne i32 0, "+a.get(i).getValue()+"\n");
+                output(tags()+"br i1 %v"+this.regId+", label %v"+(this.regId+1)+", label %v"+ast.getNoId()+"\n");
+                this.regId+=2;
+                output("\nv"+(this.regId-1)+":\n");
+            }
+            int max=a.size()-1;
+            a.get(max).setInStack(false);
+            generate(a.get(max));
+            if(a.size()==1){
+                ast.setValue(a.get(max).getValue());
+            }
+
+            output(tags()+"%v"+this.regId+" = icmp ne i32 0, "+a.get(max).getValue()+"\n");
+            output(tags()+"br i1 %v"+this.regId+", label %v"+ast.getYesId()+", label %v"+ast.getNoId()+"\n");
+            this.regId+=1;
+
         }
-        else if(a.get(0).getContent().equals("<LVal>")){
-            generate(a.get(0));//LVal
-            ast.setValue(a.get(0).getValue());
-        }
-
-
-
     }
-    public void Number1(AstNode ast){
 
+    public void LOrExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
-        ast.setValue(a.get(0).getContent());
+        for(int i=0;i<a.size()-2;i+=2){
+            if(a.get(i).getChild().get(0).getChild().size()==1){
+                a.get(i).getChild().get(0).setInStack(false);
+                generate(a.get(i).getChild().get(0));//LOrExp
+                output(tags()+"%v"+this.regId+" = icmp ne i32 0, "+a.get(i).getChild().get(0).getValue()+"\n");
+                output(tags()+"br i1 %v"+this.regId+", label %v"+ast.getYesId()+", label %v"+(this.regId+1)+"\n");
+                this.regId+=2;
+                output("\nv"+(this.regId-1)+":\n");
+            }
+            else{
+                a.get(i).setYesId(ast.getYesId());
+                a.get(i).setStmtId(ast.getStmtId());
+                a.get(i).setNoId(this.regId);
+                a.get(i).setInStack(false);
+                this.regId++;
+                generate(a.get(i));//特殊
+                output("\nv"+a.get(i).getNoId()+":\n");
+            }
+        }
+        int max=a.size()-1;
+        if(a.get(max).getChild().size()==1){
+            a.get(max).setInStack(false);
+            generate(a.get(max));//LOrExp
+            output(tags()+"%v"+this.regId+" = icmp ne i32 0, "+a.get(max).getValue()+"\n");
+            output(tags()+"br i1 %v"+this.regId+", label %v"+ast.getYesId()+", label %v"+ast.getNoId()+"\n");
+            this.regId+=1;
+        }
+        else{
+            a.get(max).setYesId(ast.getYesId());
+            a.get(max).setStmtId(ast.getStmtId());
+            a.get(max).setNoId(ast.getNoId());
+            a.get(max).setInStack(false);
+            this.regId++;
+            generate(a.get(max));//特殊
+
+        }
+
     }
+
 
 
 
@@ -439,6 +639,14 @@ public class Generator{
             case "*": opt="mul";break;
             case "/": opt="sdiv";break;
             case "%": opt="srem";break;
+            case "==": opt="eq";break;
+            case "!=": opt="ne";break;
+            case ">": opt="sgt";break;
+            case ">=": opt="sge";break;
+            case "<": opt="slg";break;
+            case "<=": opt="sle";break;
+            case "&&": opt="and";break;
+            case "||": opt="or";break;
         }
         return opt;
     }
@@ -452,6 +660,12 @@ public class Generator{
             case "*":ans=a*b;break;
             case "/":ans=a/b;break;
             case "%":ans=a%b;break;
+            case "==": ans=(a==b)?1:0;break;
+            case "!=": ans=(a!=b)?1:0;break;
+            case ">": ans=(a>b)?1:0;break;
+            case ">=": ans=(a>=b)?1:0;break;
+            case "<": ans=(a<b)?1:0;break;
+            case "<=": ans=(a<=b)?1:0;break;
         }
         return ans+"";
     }

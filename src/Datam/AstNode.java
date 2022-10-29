@@ -8,6 +8,10 @@ public class AstNode{
     AstNode fatherAst = null;
     int regId=0;
     int level=0;
+    int StmtId=0;
+    int YesId=0;
+    int NoId=0;
+    boolean inStack=true;
     String value="";
     String returnType="";
     KeyValue key = new KeyValue();
@@ -18,6 +22,15 @@ public class AstNode{
         a.setFatherAst(this);
         child.add(a);
     }
+
+    public boolean isInStack(){
+        return inStack;
+    }
+
+    public void setInStack(boolean inStack){
+        this.inStack=inStack;
+    }
+
     public ArrayList<AstNode> getChild(){
         return child;
     }
@@ -33,6 +46,32 @@ public class AstNode{
     public String getReturnType(){
         return returnType;
     }
+
+
+    public int getStmtId(){
+        return StmtId;
+    }
+
+    public void setStmtId(int stmtId){
+        StmtId=stmtId;
+    }
+
+    public int getYesId(){
+        return YesId;
+    }
+
+    public int getNoId(){
+        return NoId;
+    }
+
+    public void setYesId(int yesId){
+        YesId=yesId;
+    }
+
+    public void setNoId(int noId){
+        NoId=noId;
+    }
+
 
     public void setReturnType(String returnType){
         this.returnType=returnType;
