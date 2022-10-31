@@ -567,30 +567,6 @@ public class Generator{
             ast.setValue(left);
         }
     }
-    public void LOrAndExp(AstNode ast){
-        ArrayList<AstNode> a=ast.getChild();
-        generate(a.get(0));//LAndExp
-        String left=a.get(0).getValue();
-        if(a.size()>1){
-            for(int i=1;i<a.size();i+=2){
-                String op=a.get(i).getContent();
-                generate(a.get(i+1));
-                String right=a.get(i+1).getValue();
-                String opt=Operator(op);
-
-                output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
-                a.get(i+1).setRegId("%v"+this.regId);
-                a.get(i+1).setValue("%v"+this.regId);
-                this.regId++;
-
-                left=a.get(i+1).getValue();
-            }
-            ast.setValue(a.get(a.size()-1).getValue());
-        }
-        else{
-            ast.setValue(left);
-        }
-    }
     public void LAndExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         if(a.size()==1){

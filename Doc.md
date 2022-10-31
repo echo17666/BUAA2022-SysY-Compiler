@@ -19,11 +19,11 @@
     - [1.题目说明](#1题目说明)
     - [2.repeat/until](#2repeatuntil)
     - [3.Hexadecimal](#3hexadecimal)
-  - [4.5 语法分析小重构](#45-语法分析小重构)
+  - [5.错误处理](#5错误处理)
+  - [5.5 语法分析小重构](#55-语法分析小重构)
     - [1.抽象语法树的构建](#1抽象语法树的构建)
     - [2.抽象语法树的生成](#2抽象语法树的生成)
-  - [5.错误处理](#5错误处理)
-  - [6.代码生成1](#6代码生成1)
+  - [6.代码生成](#6代码生成)
     - [1.总述](#1总述-2)
     - [2.编码前的总设计](#2编码前的总设计)
     - [3.main函数（Lab1）](#3main函数lab1)
@@ -56,14 +56,14 @@ public static void main(String[] args)throws Exception{
         //行号递增
         n+=1;
     }
-    //语法分析，使用词法得到的Token表格，实际操作中下面两行应该注释（因为语义分析包含语法分析所有内容）
+    //语法分析，使用词法得到的Token表格
     SyntaxMain syntax = new SyntaxMain(sentence.getBank());
     syntax.analyze();
     //语义分析，使用词法得到的Token表格，包含语法，语法+语义+错误一遍处理
-    SemanticMain semantic = new SemanticMain(sentence.getBank());
-    semantic.analyze();
+    //SemanticMain semantic = new SemanticMain(sentence.getBank());
+    //semantic.analyze();
     //生成中间代码
-    LLvmMain llvmMain = new LLvmMain(semantic.getAst());
+    LLvmMain llvmMain = new LLvmMain(syntax.getAst());
     llvmMain.generate();
     filereader.close();
 }
@@ -75,8 +75,9 @@ public static void main(String[] args)throws Exception{
 例如，对于语义分析， **`Compiler.java`** 中的代码如下
 
 ```java
-SemanticMain semantic = new SemanticMain(sentence.getBank());
-semantic.analyze();
+SyntaxMain syntax = new SyntaxMain(sentence.getBank());
+syntax.analyze();
+LLvmMain llvmMain = new LLvmMain(syntax.getAst());
 ```
 不难发现，构造函数传入的是上一个黑盒————词法分析的输出，然后直接调用 **`analyze()`** 方法进行语法分析，而其生成的语法树则是通过 **`getAst()`** 方法获取并交给 **代码生成`LLvmMain类`** 的的，这样就可以将语法分析的内部过程隐藏，从而使得 **`Compiler.java`** 只需要知道语法分析的输入和输出即可。
 
@@ -96,38 +97,38 @@ public class SemanticMain{
         semanticProcedure.check();
         semanticProcedure.finalErrorOutput();
     }
-    public Token getAst(){
-        return semanticProcedure.getTokenAst();
-    }
 }
 ```
-不难发现，入口函数内，我们将其底层要输出的文件进行**初始化**，同时创建一个分析程序 **`SemanticProcedure`**，其构造函数获取上一模块的输入，然后分析程序调用 **`analyze()`** 方法进行 **`语法/语义分析`** ，调用 **`check()`** 方法进行 **`符号表`** 的检查，最后调用 **`finalErrorOutput()`** 方法输出 **`错误处理`** 。对该模块测试可以在这里添加方法，而这三个方法封装在一个 **`analyze()`** 内，供主程序直接调用。同时，通过 **`getAst()`** 方法获取语法树，从而将语义分析的内部过程隐藏，从而使得入口函数只需要知道**语义分析的输入和输出**即可。
+不难发现，入口函数内，我们将其底层要输出的文件进行**初始化**，同时创建一个分析程序 **`SemanticProcedure`**，其构造函数获取上一模块的输入，然后分析程序调用 **`analyze()`** 方法进行 **`语法/语义分析`** ，调用 **`check()`** 方法进行 **`符号表`** 的检查，最后调用 **`finalErrorOutput()`** 方法输出 **`错误处理`** 。对该模块测试可以在这里添加方法，而这三个方法封装在一个 **`analyze()`** 内，供主程序直接调用。
 
 ### 3.文件组织
 文件组织采用**一遍一个package**的结构，每一个package作每一个单独的步骤。具体结构如下：
 ```bash
 src
-│  Compiler.java  #入口程序
+│  Compiler.java #入口程序
 │
-├─Datam #基础类
+├─Datam
+│      AstNode.java #语法树节点类
 │      ErrorLine.java #错误类
+│      KeyValue.java #真实值类
 │      Token.java #标识符类
 │
-├─Lexical #词法分析
+├─Lexical
 │      Split.java #分词器
 │      WordCheck.java #单词分析器
 │
-├─LLVM #代码生成
+├─LLVM
 │      Generator.java #代码生成器
 │      LLvmMain.java #代码生成入口程序
-│
-├─Semantic #语义分析(错误处理)
+│ 
+├─Semantic
 │      SemanticMain.java #语义分析入口程序
 │      SemanticProcedure.java #语义分析器
 │
-└─Syntax #语法分析
+└─Syntax
        SyntaxMain.java #语法分析入口程序
-       SyntaxProcedure.java #语法分析器
+       SyntaxProcedure.java #语法分析器（直接输出）
+       SyntaxProcedure2.java #语法分析器（抽象语法树前序遍历）
 ```
 ## 3.词法分析设计
 
@@ -721,8 +722,11 @@ else{
 ```
 至此，十个样例点全部通过，考试完成，如果顺利的话**15-20分钟**就可以完成，所以不用慌张。
 
-## 4.5 语法分析小重构
-由于之后的步骤是 **`语义分析`** 和 **`中间代码`** 生成部分，这两部分的输入均需要采用 **`语法分析`** 的输出，故我们需要进行小规模重构，方便 **`中间代码`** 的生成。
+
+## 5.错误处理
+
+## 5.5 语法分析小重构
+由于之后的步骤是 **`中间代码`** 生成部分，这部分的输入需要采用 **`语法分析`** 的输出，故我们需要进行小规模重构，方便 **`中间代码`** 的生成。
 
 ### 1.抽象语法树的构建
 在 **`语法分析`** 阶段，我们实际上做的就是用 **`词法分析`** 分出来的**Token**去匹配一条条文法。而现在，我们需要建立一个树，使得我们可以通过一条文法的**左部**找到对应的**右部**，然后通过**右部**找到对应的**Token**，这样我们就可以做到通过一条文法的根节点找到其下的所有**Token**。
@@ -814,6 +818,7 @@ public void MainFuncDef(/*new*/AstNode ast/*该节点的父节点，例如，Mai
     output("<MainFuncDef>");//这个output其实已经没用了
 }
 ```
+
 然后，我们对 **`nextsym()`** 函数进行修改，使得 **`非终结符`** 可以加入到语法树中，即达到**自底向上建立语法树**的目的
 ```java
 public void nextsym(AstNode ast){
@@ -842,6 +847,48 @@ public void outputAst(AstNode ast){
     else{/*输出终结符内容*/}
 }
 ```
+比较特殊的是 **`AddExp`** 一类代码。虽然也是在原基础上改动，但是还是要单独说一下。由于原先代码中，我们采用的是**读后面是否有操作符再判断是否输出 `< AddExp >`**，所以这里我们也是如此，如果读到了操作符，则**增加结点** ，分别连接前后节点。如果没有操作符，则直接连接结点。
+```java
+public void AddExp(/*new*/AstNode ast){
+    /*new*/
+    AstNode a =new AstNode("<AddExp>");
+    if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)|isNumber(sym)){MulExp(a); //在a结点（AddExp）下添加子节点MulExp
+        while(sym.equals("+")||sym.equals("-")){  //如果后面有操作符，则说明该结点是AddExp
+            /*new*/
+            AstNode tmp=a.changeNode(); //新建一个临时结点tmp，存储a的最后一个子节点（即上一个MulExp结点），并在a下删除该节点
+            AstNode b =new AstNode("<AddExp>"); //新建AddExp结点b
+            b.addNode(tmp); //将tmp加入b的子节点列表中，即在原先MulExp结点上加上AddExp结点
+            a.addNode(b); //将b加入a的子节点列表中，即把新的AddExp结点接在a结点下
+            //一通操作下来，相当于把a的最后一个子节点（MulExp）中间加了一个AddExp结点
+
+            output("<AddExp>");
+            nextsym(a);MulExp(a);
+            if(getbeforesym().equals("+")||getbeforesym().equals("-")){
+                /*new*/
+                AstNode tmp1=a.changeNode();
+                AstNode b1 =new AstNode("<AddExp>");
+                b1.addNode(tmp1);
+                a.addNode(b1);
+
+                output("<AddExp>");
+            }
+        }
+    }
+    else{}
+    /*new*/
+    ast.addNode(a);
+    output("<AddExp>");
+}
+```
+这样依旧可以保证**前序遍历的正确性**，但是其语法树构建方式比较独特，是下面这个样子
+```
+                                <AddExp>
+    ┌─────┬──────┬─────┬──────┬─────┼──────┬─────┬──────┬─────┬──────┐
+<AddExp>  +  <AddExp>  +  <AddExp>  +  <AddExp>  +  <AddExp>  +  <MulExp>
+      
+```
+这种构建方法没有按照传统文法要求来构建语法树，但是和传统的文法构建的语法树**输出相同**，不影响语法分析的输出。且顺带一提，个人认为，上述 **`xxxExp`** 语法树的构建方式是整个编译器的**点睛之笔**，这一构建方式在代码生成2的 **`短路求值`** 中将**减少巨大复杂度**。
+
 最后建立语法树**输出接口**，供 **`代码生成`** 使用
 ```java
 // SyntaxProcedure2.java
@@ -858,9 +905,7 @@ LLvmMain llvmMain = new LLvmMain(syntax.getAst());
 
 自此，**语法树构建完成**，接下来进行 **`代码生成`** 。
 
-## 5.错误处理
-
-## 6.代码生成1
+## 6.代码生成
 
 ### 1.总述
 本次 **`代码生成`** 是**分值最高**，也是前期**调研时间最长**的一部分。本次采用的是 **`LLVM IR`** 作为目标代码的生成，~~打算选 **`MIPS`** 和 **`PCode`** 的佬可以退了~~。尤其是 **`代码生成1`** 只有 **3周** 时间，给的时间还是太少了，**调研了一整周时间**，期间做了上述 **`语法分析的重构`** ，第二周才开始写 **`代码生成`** 并在两天内完成了 **`代码生成1`**，所以前期调研工作 **十分重要**。这里给出个人的一点点**调研结果**
@@ -1032,16 +1077,33 @@ int main(){
 ```
 在这里，我们可以看到，**`1`** 和 **`2`** 都是常数，所以直接传递常数，而 **`-2`** 是一个表达式，所以传递的是寄存器 **`%v1`** 。
 
-所以，我们在运算的时候，需要将前后两个值进行运算，然后传递给上层
+所以，我们在运算的时候，需要将前后两个值进行运算，然后传递给上层。由于传递的都是**寄存器**，且写法相同，故AddExp和MulExp功能完全相同，只是运算符不同，所以我们可以把他们合并为一个函数，即 **`AddMulExp()`** 。
 ```java
 public void AddMulExp(AstNode ast){
-    ArrayList<AstNode> a=ast.getChild();
-    generate(a.get(0));
-    String left=a.get(0).getValue();
-    ast.setValue(left);
+    ArrayList<AstNode> a=ast.getChild(); //获取子节点
+    generate(a.get(0));//AddExp/MulExp   //运行第一个子节点
+    String left=a.get(0).getValue();     //获取第一个子节点的值
+    if(a.size()>1){                      //如果有第二个子节点
+        for(int i=1;i<a.size();i+=2){
+            String op=a.get(i).getContent();       //获取运算符
+            generate(a.get(i+1));                  //运行第二个子节点
+            String right=a.get(i+1).getValue();    //获取第二个子节点的值
+            String opt=Operator(op);               //获取运算符对应的LLVM指令
+            output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n"); //输出LLVM指令
+            a.get(i+1).setRegId("%v"+this.regId); //设置运算完的值所存的地址
+            a.get(i+1).setValue("%v"+this.regId); //设置运算完的值
+            this.regId++;                         //寄存器编号+1
+            left=a.get(i+1).getValue();           //将运算完的值留到下一个循环
+        }
+        ast.setValue(a.get(a.size()-1).getValue()); //将运算完的值传递给上层
+    }
+    else{
+        ast.setValue(left); //如果没有第二个子节点，直接传递第一个子节点的值
+    }
 }
 ```
-这里做法因人而异，由于我在**构建语法树**时，Mul/Add/Rel/Eq/LAnd/LOrExp是放到**一个层级**中判断的，所以一级有多个子结点，所以我用了 **`for`** 循环。即从前往后一步步运算。 **`left`** 是运算左部的value， **`right`**是右部的value，每一次运算就是 **`left op right`** ，然后将结果赋值给 **`left`** ，这样就可以一直往后运算。最后，将最后的结果的寄存器值给 **`父节点`** 的value，这样就可以向上传递了。
+这里做法因人而异，由于我在**构建语法树**时， **`Mul`** / **`Add`** / **`Rel`** / **`Eq`** / **`LAnd`** / **`LOrExp`** 是放到**一个层级**中判断的，所以一级有多个子结点，所以我用了 **`for`** 循环。即从前往后一步步运算。 **`left`** 是运算左部的value， **`right`**是右部的value，每一次运算就是 **`left op right`** ，然后将结果赋值给 **`left`** ，这样就可以一直往后运算。最后，将最后的结果的寄存器值给 **`父节点`** 的value，这样就可以向上传递了。
+
 ```
                                 <AddExp>
     ┌─────┬──────┬─────┬──────┬─────┼──────┬─────┬──────┬─────┬──────┐
@@ -1049,3 +1111,4 @@ public void AddMulExp(AstNode ast){
       
 ```
 这样我们就可以发现，**Unary/Mul/Add/Rel/Eq/LAnd/LOrExp** 本质上的操作是一模一样的，即从左往右运算，然后向上传递最终结果存储的寄存器value。所以Add/Mul写在**一个函数**都是完全没问题的。 **`UnaryExp`** ,  **`PrimaryExp`** 的处理方法更加简单，只需要把下层的综合属性传递上去就行。
+

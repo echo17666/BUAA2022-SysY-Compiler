@@ -10,7 +10,9 @@
 
 - 2022.10.21 Reconstruct Syntax analysis(SyntaxProcedure2: add AstTree)
 
-- 2022.10.26 Finished LLVM IR generate
+- 2022.10.26 Finished LLVM IR generate Part I( Declaration & Function & Expression)
+
+- 2022.10.27 Finished LLVM IR generate Part II( Condition & Loop )
 
 
 
