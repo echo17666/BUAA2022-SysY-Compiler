@@ -295,7 +295,7 @@ public class Generator{
                 else if(s.charAt(i)=='\\'&&s.charAt(i+1)=='n'){
                     i++;
                     output(tags()+"call void @putch(i32 10)\n");
-                    parNum+=2;
+
                 }
                 else{
                     output(tags()+"call void @putch(i32 "+(int) s.charAt(i)+")\n");
@@ -387,21 +387,15 @@ public class Generator{
             }
         }
         if(check==0){
-            if(level>=1){
-//                output(tags()+"%v"+this.regId+" = alloca i32"+"\n");
-//                ident.setValue("%v"+this.regId);
-//                ident.setRegId(this.regId);
-//                ident.setLevel(this.level);
-//                ast.setRegId(ident.getRegId());
-//                if(ast.isInStack()){
-//                    stack.add(ident);
-//                }
-//                this.regId++;
+            if(level>0){
+                output(tags()+"%v"+this.regId+" = load i32, i32* "+"@"+identName+"\n");
+                ast.setValue("%v"+this.regId);
+                ast.setRegId("@"+identName);
+                this.regId++;
             }
-            output(tags()+"%v"+this.regId+" = load i32, i32* "+"@"+identName+"\n");
-            ast.setValue("%v"+this.regId);
-            ast.setRegId("@"+identName);
-            this.regId++;
+            else{
+                ast.setValue(global.get(identName).getKey().getIntVal());
+            }
         }
     }
     public void Exp(AstNode ast){
@@ -458,7 +452,7 @@ public class Generator{
             else if(a.get(0).getChild().get(0).getContent().equals("!")){
                 output(tags()+"%v"+this.regId+" = icmp eq i32 0, "+a.get(1).getValue()+"\n");
                 this.regId++;
-                output(tags()+"%v"+this.regId+" = sext i1 %v"+(this.regId-1)+" to i32\n");
+                output(tags()+"%v"+this.regId+" = zext i1 %v"+(this.regId-1)+" to i32\n");
                 ast.setRegId("%v"+this.regId);
                 ast.setValue("%v"+this.regId);
                 this.regId++;
@@ -557,7 +551,7 @@ public class Generator{
                 if(level>0){
                     output(tags()+"%v"+this.regId+" = icmp "+opt+" i32 "+left+", "+right+"\n");
                     this.regId++;
-                    output(tags()+"%v"+this.regId+" = sext i1 %v"+(this.regId-1)+" to i32\n");
+                    output(tags()+"%v"+this.regId+" = zext i1 %v"+(this.regId-1)+" to i32\n");
                     a.get(i+1).setRegId("%v"+this.regId);
                     a.get(i+1).setValue("%v"+this.regId);
                     this.regId++;
