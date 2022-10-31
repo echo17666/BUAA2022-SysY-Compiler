@@ -25,9 +25,9 @@
   - [5.错误处理](#5错误处理)
   - [6.代码生成1](#6代码生成1)
     - [1.总述](#1总述-2)
-    - [2.编码前的设计](#2编码前的设计-2)
-      - [1.总设计](#1总设计)
-      - [2.main函数（Lab1）](#2main函数lab1)
+    - [2.编码前的总设计](#2编码前的总设计)
+    - [3.main函数（Lab1）](#3main函数lab1)
+    - [4.四则运算（Lab 2）](#4四则运算lab-2)
 
 <!-- /TOC -->
 ## 1.参考编译器介绍
@@ -871,12 +871,11 @@ LLvmMain llvmMain = new LLvmMain(syntax.getAst());
 
 **`MIPS`** 一开始可能就不在考虑范围内，所以调研可能不算全面，~~写 **`MIPS`** 的佬应该也不会看我的博客~~。 **`MIPS`** 和 **`PCode`** 相同，都需要 **`翻译器`** 和 **`解释器`** ，但与 **`PCode`** 不同的是， **`MIPS`** 的中间代码必须是 **`规范的四元式`** ，因为后面代码优化需要考察中间代码。而且MIPS寄存器标号**只有32个**，还要用寄存器的话就要放到栈内。好处就是可以多去卷一卷竞速的分数。
 
-在调研一周之后，果断投入 **`LLVM`** 的怀抱 
+在调研一周之后，果断投入 **`LLVM`** 的怀抱
 
-### 2.编码前的设计
-由于LLVM的设计直接参考[往届软院编译实验](https://buaa-se-compiling.github.io/miniSysY-tutorial/pre/llvm.html)，所以编码设计顺序也按照上述实验来分析。 **`代码生成1`** 的实验包含**Lab1，2，3，5，8**。
+### 2.编码前的总设计
+由于LLVM的设计直接参考[往届软院编译实验](https://buaa-se-compiling.github.io/miniSysY-tutorial/pre/llvm.html)，所以编码设计顺序也按照上述实验来分析。 **`代码生成1`** 的实验包含**Lab1，2，3，5，8**。 **`代码生成2`** 的实验包含**Lab4，6，7**。且在每个实验之后会配一些自己认为比较强的**testfile**仅供参考。
 
-#### 1.总设计
 与前面一样，我们为代码生成设计**入口函数**
 ```java
 //Compiler.java
@@ -935,7 +934,7 @@ public void generate(AstNode ast){
 ```
 这样即可做到写一个Lab检查一个Lab，对于**检查错误**和**阶段生成**都有利，故采用这种写法。
 
-#### 2.main函数（Lab1）
+### 3.main函数（Lab1）
 我们首先观察样例输入和输出
 ```c
 int main() {
@@ -979,6 +978,74 @@ public void Stmt(AstNode ast){
     }   
 }
 ```
-我们发现， **`return`**  语句的输出是 **`ret i32`** ，而 **`return`** 后面的表达式是 **`Exp()`** ，这就需要我们一级级调用，找到根节点，然后通过综合属性从叶结点一步步传到根节点。
+我们发现， **`return`**  语句的输出是 **`ret i32`** ，而 **`return`** 后面的表达式是 **`Exp()`** ，这就需要我们一级级调用，找到根节点，然后通过 **`综合属性`** 从叶结点一步步传到根节点。
 
-累了，之后再写（-A-）
+而在中间代码生成的过程中，我们在语法树中向上传递的综合属性，本质上是**寄存器的传递**，所以从根本上，我们不需要知道究竟这个东西现在值是多少，这一步是解释器去做的。我们只需要知道，这个值现在存在**几号寄存器**，或者这个常量究竟**是多少**。如果了解了这个，那么我们就可以在结点类中添加以下字段
+```java
+String regId="";//符号表内的寄存器值
+String value="";//综合属性
+String returnType="";//返回值类型(函数时使用)
+```
+这里我们只需要使用 **`value`** ，即如果这个值是常数 **`Number`** ，那么value向上传递的就是常数，否则就传递寄存器。由于**Lab1不涉及四则运算**，故我们只需要把下层的值传递给上层。这样，我们就可以在 **`xxxExp()`** 中写出以下代码
+
+```java
+generate(a.get(0));//运行下层函数
+ast.setValue(a.get(0).getValue());//把子节点的值传递给上层
+```
+唯一区别是 **`Number`** 的时候，因为这时候子节点就是**叶结点**，所以直接传递**常数**即可。
+```java
+ast.setValue(a.get(0).getContent()); //唯一不同的地方，就是Number传递的不是子节点寄存器，而是子节点内容，即真实数字
+```
+所以一层层传递上去之后，在 **`Stmt`** 中有
+```java
+public void Stmt(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    if(a.get(0).getContent().equals("<Block>")){generate(a.get(0));}
+    else if(a.get(0).getContent().equals("return")){
+        if(a.get(1).getContent().equals(";")){/*void 的return在函数说明，这里只考虑main函数的return*/}
+        else{
+            generate(a.get(1));//Exp
+            output(tags()+"ret i32 "+a.get(1).getValue()+"\n");
+            //tags()可有可无，只是为了缩进好看所以加的QAQ
+        }
+    }
+}
+```
+
+至此，Lab1完成。
+
+- 测试样例
+```c
+int main(){
+    return 2147483647;
+}
+```
+
+### 4.四则运算（Lab 2）
+
+开始写代码前，**举个栗子**
+
+以 **`1+-2`** 为例，生成的LLVM就是：
+```llvm
+%v1 = sub i32 0, 2 
+%v2 = add i32 1, %v1
+```
+在这里，我们可以看到，**`1`** 和 **`2`** 都是常数，所以直接传递常数，而 **`-2`** 是一个表达式，所以传递的是寄存器 **`%v1`** 。
+
+所以，我们在运算的时候，需要将前后两个值进行运算，然后传递给上层
+```java
+public void AddMulExp(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    generate(a.get(0));
+    String left=a.get(0).getValue();
+    ast.setValue(left);
+}
+```
+这里做法因人而异，由于我在**构建语法树**时，Mul/Add/Rel/Eq/LAnd/LOrExp是放到**一个层级**中判断的，所以一级有多个子结点，所以我用了 **`for`** 循环。即从前往后一步步运算。 **`left`** 是运算左部的value， **`right`**是右部的value，每一次运算就是 **`left op right`** ，然后将结果赋值给 **`left`** ，这样就可以一直往后运算。最后，将最后的结果的寄存器值给 **`父节点`** 的value，这样就可以向上传递了。
+```
+                                <AddExp>
+    ┌─────┬──────┬─────┬──────┬─────┼──────┬─────┬──────┬─────┬──────┐
+<AddExp>  +  <AddExp>  +  <AddExp>  +  <AddExp>  +  <AddExp>  +  <MulExp>
+      
+```
+这样我们就可以发现，**Unary/Mul/Add/Rel/Eq/LAnd/LOrExp** 本质上的操作是一模一样的，即从左往右运算，然后向上传递最终结果存储的寄存器value。所以Add/Mul写在**一个函数**都是完全没问题的。 **`UnaryExp`** ,  **`PrimaryExp`** 的处理方法更加简单，只需要把下层的综合属性传递上去就行。

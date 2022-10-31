@@ -73,7 +73,7 @@ public class Generator{
         if(level!=0){
             output(tags()+"%v"+this.regId+" = alloca i32\n");
             ident.setValue("%v"+this.regId);
-            ident.setRegId(this.regId);
+            ident.setRegId("%v"+this.regId);
             this.regId++;
         }
         if(a.size()==3){
@@ -84,7 +84,7 @@ public class Generator{
                 output("@"+ident.getContent()+" = dso_local global i32 "+k.getIntVal()+"\n");
             }
             else{
-                output(tags()+"store i32 "+a.get(2).getValue()+", i32* %v"+ident.getRegId()+"\n");
+                output(tags()+"store i32 "+a.get(2).getValue()+", i32* "+ident.getRegId()+"\n");
             }
         }
         if(level==0){
@@ -118,7 +118,7 @@ public class Generator{
             if(level!=0){
                 output(tags()+"%v"+this.regId+" = alloca i32\n");
                 ident.setValue("%v"+this.regId);
-                ident.setRegId(this.regId);
+                ident.setRegId("%v"+this.regId);
                 this.regId++;
             }
             k.setDim(0);
@@ -126,7 +126,7 @@ public class Generator{
                 generate(a.get(2));
                 k.setIntVal(a.get(2).getKey().getIntVal());
                 if(level!=0){
-                    output(tags()+"store i32 "+a.get(2).getValue()+", i32* %v"+ident.getRegId()+"\n");
+                    output(tags()+"store i32 "+a.get(2).getValue()+", i32* "+ident.getRegId()+"\n");
                 }
             }
             else if(a.size()==1){
@@ -220,10 +220,10 @@ public class Generator{
                 level+=1;
                 if(level==1){
                     for(int j=stack.size()-1;j>=0;j--){
-                        if(stack.get(j).getRegId()==0&&stack.get(j).getLevel()==1){
+                        if(stack.get(j).getRegId().equals("")&&stack.get(j).getLevel()==1){
                             output(tags()+"%v"+this.regId+" = alloca i32\n");
-                            stack.get(j).setRegId(this.regId);
-                            output(tags()+"store i32 "+stack.get(j).getValue()+", i32* %v"+stack.get(j).getRegId()+"\n");
+                            stack.get(j).setRegId("%v"+this.regId);
+                            output(tags()+"store i32 "+stack.get(j).getValue()+", i32* "+stack.get(j).getRegId()+"\n");
                             this.regId++;
                         }
                     }
@@ -238,14 +238,23 @@ public class Generator{
                     nowtag-=1;
                 }
             }
-            else{generate(a.get(i));}
+            else{
+                a.get(i).setContinueId(ast.getContinueId());
+                a.get(i).setBreakId(ast.getBreakId());
+                generate(a.get(i));
+            }
         }
     }
     public void Stmt(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
-        if(a.get(0).getContent().equals("<Block>")){generate(a.get(0));}
+        if(a.get(0).getContent().equals("<Block>")){
+            a.get(0).setContinueId(ast.getContinueId());
+            a.get(0).setBreakId(ast.getBreakId());
+            generate(a.get(0));
+        }
         else if(a.get(0).getContent().equals("return")){
             if(a.get(1).getContent().equals(";")){
+                output(tags()+"ret void\n");
             }
             else{
                 generate(a.get(1));//Exp
@@ -257,14 +266,15 @@ public class Generator{
             generate(a.get(0));//LVal
             if(a.get(2).getContent().equals("<Exp>")){
                 generate(a.get(2));//Exp
-                output(tags()+"store i32 "+a.get(2).getValue()+", i32* %v"+a.get(0).getRegId()+"\n");
+                output(tags()+"store i32 "+a.get(2).getValue()+", i32* "+a.get(0).getRegId()+"\n");
             }
             else if(a.get(2).getContent().equals("getint")){
                 output(tags()+"%v"+this.regId+" = call i32 @getint()"+"\n");
-                output(tags()+"store i32 "+"%v"+this.regId+", i32* %v"+a.get(0).getRegId()+"\n");
+                output(tags()+"store i32 "+"%v"+this.regId+", i32* "+a.get(0).getRegId()+"\n");
                 this.regId++;
             }
         }
+        else if(a.get(0).getContent().equals("<Exp>")){generate(a.get(0));}
         else if(a.get(0).getContent().equals("printf")){
             int parNum=4;
             String s=a.get(2).getContent();
@@ -272,6 +282,13 @@ public class Generator{
                 if(s.charAt(i)=='%'&&s.charAt(i+1)=='d'){
                     i++;
                     generate(a.get(parNum));
+                    parNum+=2;
+                }
+            }
+            parNum=4;
+            for(int i=1;i<s.length()-1;i++){
+                if(s.charAt(i)=='%'&&s.charAt(i+1)=='d'){
+                    i++;
                     output(tags()+"call void @putint(i32 "+a.get(parNum).getValue()+")\n");
                     parNum+=2;
                 }
@@ -284,6 +301,8 @@ public class Generator{
                     output(tags()+"call void @putch(i32 "+(int) s.charAt(i)+")\n");
                 }
             }
+
+
         }
         else if(a.get(0).getContent().equals("if")){
             output(tags()+"br label %v"+this.regId+"\n");
@@ -296,16 +315,21 @@ public class Generator{
                 a.get(2).setNoId(this.regId+2);
                 a.get(2).setStmtId(this.regId+3);
                 a.get(4).setStmtId(this.regId+3);
+                a.get(4).setContinueId(ast.getContinueId());
+                a.get(4).setBreakId(ast.getBreakId());
                 a.get(6).setStmtId(this.regId+3);
+                a.get(6).setContinueId(ast.getContinueId());
+                a.get(6).setBreakId(ast.getBreakId());
                 NoId = this.regId+2;
                 StmtId = this.regId+3;
                 this.regId+=4;
-
             }
             else{
                 a.get(2).setNoId(this.regId+2);
                 a.get(2).setStmtId(this.regId+2);
                 a.get(4).setStmtId(this.regId+2);
+                a.get(4).setContinueId(ast.getContinueId());
+                a.get(4).setBreakId(ast.getBreakId());
                 StmtId = this.regId+2;
                 this.regId+=3;
             }
@@ -317,19 +341,29 @@ public class Generator{
                 generate(a.get(6));
             }
             output("\nv"+StmtId+":\n");
-
-
         }
         else if(a.get(0).getContent().equals("while")){
             output(tags()+"br label %v"+this.regId+"\n");
             output("\nv"+this.regId+":\n");
-            this.regId++;
+            int YesId = this.regId+1;
+            int NoId=this.regId+2;
+            int StmtId=this.regId+2;
+            a.get(2).setYesId(this.regId+1);
+            a.get(2).setNoId(this.regId+2);
+            a.get(2).setStmtId(this.regId+2);
+            a.get(4).setStmtId(this.regId);
+            a.get(4).setBreakId(this.regId+2);
+            a.get(4).setContinueId(this.regId);
+            this.regId+=3;
             generate(a.get(2));
-            output(tags()+"br i1 "+a.get(2).getValue()+", label %v"+(this.regId)+", label %v"+(this.regId+1)+"\n");
-            int outID=this.regId;
-            a.get(4).setStmtId(this.regId+1);
-
+            output("\nv"+YesId+":\n");
+            generate(a.get(4));
+            output("\nv"+StmtId+":\n");
         }
+        else if(a.get(0).getContent().equals("break")){
+            ast.setStmtId(ast.getBreakId());
+        }
+        else if(a.get(0).getContent().equals("continue")){ast.setStmtId(ast.getContinueId());}
         if(ast.getStmtId()!=0){
             output(tags()+"br label %v"+ast.getStmtId()+"\n");
         }
@@ -343,7 +377,7 @@ public class Generator{
             if(stack.get(i).getContent().equals(identName)){
                 if(stack.get(i).getValue().charAt(0)!='%'){ast.setValue(stack.get(i).getValue());}
                 else{
-                    output(tags()+"%v"+this.regId+" = load i32, i32* %v"+stack.get(i).getRegId()+"\n");
+                    output(tags()+"%v"+this.regId+" = load i32, i32* "+stack.get(i).getRegId()+"\n");
                     ast.setValue("%v"+this.regId);
                     ast.setRegId(stack.get(i).getRegId());
                     this.regId++;
@@ -354,18 +388,19 @@ public class Generator{
         }
         if(check==0){
             if(level>=1){
-                output(tags()+"%v"+this.regId+" = alloca i32"+"\n");
-                ident.setValue("%v"+this.regId);
-                ident.setRegId(this.regId);
-                ident.setLevel(this.level);
-                ast.setRegId(ident.getRegId());
-                if(ast.isInStack()){
-                    stack.add(ident);
-                }
-                this.regId++;
+//                output(tags()+"%v"+this.regId+" = alloca i32"+"\n");
+//                ident.setValue("%v"+this.regId);
+//                ident.setRegId(this.regId);
+//                ident.setLevel(this.level);
+//                ast.setRegId(ident.getRegId());
+//                if(ast.isInStack()){
+//                    stack.add(ident);
+//                }
+//                this.regId++;
             }
             output(tags()+"%v"+this.regId+" = load i32, i32* "+"@"+identName+"\n");
             ast.setValue("%v"+this.regId);
+            ast.setRegId("@"+identName);
             this.regId++;
         }
     }
@@ -411,7 +446,7 @@ public class Generator{
             if(a.get(0).getChild().get(0).getContent().equals("-")){
                 if(level>0){
                     output(tags()+"%v"+this.regId+" = sub i32 0, "+a.get(1).getValue()+"\n");
-                    ast.setRegId(this.regId);
+                    ast.setRegId("%v"+this.regId);
                     ast.setValue("%v"+this.regId);
                     this.regId++;
                 }
@@ -424,7 +459,7 @@ public class Generator{
                 output(tags()+"%v"+this.regId+" = icmp eq i32 0, "+a.get(1).getValue()+"\n");
                 this.regId++;
                 output(tags()+"%v"+this.regId+" = sext i1 %v"+(this.regId-1)+" to i32\n");
-                ast.setRegId(this.regId);
+                ast.setRegId("%v"+this.regId);
                 ast.setValue("%v"+this.regId);
                 this.regId++;
             }
@@ -439,18 +474,28 @@ public class Generator{
             String identName = ident.getContent();
             AstNode identGlobe=global.get(identName);
             ident.setReturnType(identGlobe.getReturnType());
-
-            if(a.get(2).getContent().equals(")")){
-                output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"()\n");
-                ast.setValue("%v"+this.regId);
-                this.regId++;
+            if(ident.getReturnType().equals("i32")){
+                if(a.get(2).getContent().equals(")")){
+                    output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"()\n");
+                    ast.setValue("%v"+this.regId);
+                    this.regId++;
+                }
+                else{
+                    generate(a.get(2));
+                    output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"("+a.get(2).getValue()+")\n");
+                    ast.setValue("%v"+this.regId);
+                    this.regId++;
+                }
             }
-            else{
-                generate(a.get(2));
-                output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"("+a.get(2).getValue()+")\n");
-                ast.setValue("%v"+this.regId);
-                this.regId++;
-            };
+            else if(ident.getReturnType().equals("void")){
+                if(a.get(2).getContent().equals(")")){
+                    output(tags()+"call "+ident.getReturnType()+" @"+ident.getContent()+"()\n");
+                }
+                else{
+                    generate(a.get(2));
+                    output(tags()+"call "+ident.getReturnType()+" @"+ident.getContent()+"("+a.get(2).getValue()+")\n");
+                }
+            }
 
         }
     }
@@ -482,7 +527,7 @@ public class Generator{
                 String opt=Operator(op);
                 if(level>0){
                     output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
-                    a.get(i+1).setRegId(this.regId);
+                    a.get(i+1).setRegId("%v"+this.regId);
                     a.get(i+1).setValue("%v"+this.regId);
                     this.regId++;
                 }
@@ -513,7 +558,7 @@ public class Generator{
                     output(tags()+"%v"+this.regId+" = icmp "+opt+" i32 "+left+", "+right+"\n");
                     this.regId++;
                     output(tags()+"%v"+this.regId+" = sext i1 %v"+(this.regId-1)+" to i32\n");
-                    a.get(i+1).setRegId(this.regId);
+                    a.get(i+1).setRegId("%v"+this.regId);
                     a.get(i+1).setValue("%v"+this.regId);
                     this.regId++;
                 }
@@ -540,7 +585,7 @@ public class Generator{
                 String opt=Operator(op);
 
                 output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
-                a.get(i+1).setRegId(this.regId);
+                a.get(i+1).setRegId("%v"+this.regId);
                 a.get(i+1).setValue("%v"+this.regId);
                 this.regId++;
 
@@ -596,6 +641,7 @@ public class Generator{
             else{
                 a.get(i).setYesId(ast.getYesId());
                 a.get(i).setStmtId(ast.getStmtId());
+
                 a.get(i).setNoId(this.regId);
                 a.get(i).setInStack(false);
                 this.regId++;
@@ -643,7 +689,7 @@ public class Generator{
             case "!=": opt="ne";break;
             case ">": opt="sgt";break;
             case ">=": opt="sge";break;
-            case "<": opt="slg";break;
+            case "<": opt="slt";break;
             case "<=": opt="sle";break;
             case "&&": opt="and";break;
             case "||": opt="or";break;

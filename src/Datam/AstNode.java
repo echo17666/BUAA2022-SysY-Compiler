@@ -6,11 +6,13 @@ public class AstNode{
     String content="";
     ArrayList<AstNode> child = new ArrayList<AstNode>();
     AstNode fatherAst = null;
-    int regId=0;
+    String regId="";
     int level=0;
     int StmtId=0;
     int YesId=0;
     int NoId=0;
+    int BreakId=0;
+    int ContinueId=0;
     boolean inStack=true;
     String value="";
     String returnType="";
@@ -21,6 +23,23 @@ public class AstNode{
     public void addNode(AstNode a){
         a.setFatherAst(this);
         child.add(a);
+    }
+
+
+    public int getBreakId(){
+        return BreakId;
+    }
+
+    public void setBreakId(int breakId){
+        BreakId=breakId;
+    }
+
+    public int getContinueId(){
+        return ContinueId;
+    }
+
+    public void setContinueId(int continueId){
+        ContinueId=continueId;
     }
 
     public boolean isInStack(){
@@ -98,7 +117,7 @@ public class AstNode{
         return s;
     }
 
-    public int getRegId(){
+    public String getRegId(){
         return regId;
     }
 
@@ -110,7 +129,7 @@ public class AstNode{
         this.value=value;
     }
 
-    public void setRegId(int regId){
+    public void setRegId(String regId){
         this.regId=regId;
     }
 
