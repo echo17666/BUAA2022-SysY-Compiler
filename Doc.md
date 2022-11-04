@@ -27,7 +27,9 @@
     - [1.总述](#1总述-2)
     - [2.编码前的总设计](#2编码前的总设计)
     - [3.main函数（Lab1）](#3main函数lab1)
-    - [4.四则运算（Lab 2）](#4四则运算lab-2)
+    - [4.常量表达式（Lab 2）](#4常量表达式lab-2)
+      - [1.四则运算](#1四则运算)
+      - [2.负号处理](#2负号处理)
 
 <!-- /TOC -->
 ## 1.参考编译器介绍
@@ -1066,8 +1068,8 @@ int main(){
 }
 ```
 
-### 4.四则运算（Lab 2）
-
+### 4.常量表达式（Lab 2）
+#### 1.四则运算
 开始写代码前，**举个栗子**
 
 以 **`1+-2`** 为例，生成的LLVM就是：
@@ -1110,5 +1112,57 @@ public void AddMulExp(AstNode ast){
 <AddExp>  +  <AddExp>  +  <AddExp>  +  <AddExp>  +  <AddExp>  +  <MulExp>
       
 ```
-这样我们就可以发现，**Unary/Mul/Add/Rel/Eq/LAnd/LOrExp** 本质上的操作是一模一样的，即从左往右运算，然后向上传递最终结果存储的寄存器value。所以Add/Mul写在**一个函数**都是完全没问题的。 **`UnaryExp`** ,  **`PrimaryExp`** 的处理方法更加简单，只需要把下层的综合属性传递上去就行。
+这样我们就可以发现，**xxxExp** 本质上的操作是一模一样的，即从左往右运算，然后向上传递最终结果存储的寄存器value。所以Add/Mul写在**一个函数**都是完全没问题的。 **`UnaryExp`** ,  **`PrimaryExp`** 的处理方法更加简单，只需要把下层的综合属性传递上去就行。唯一需要做的，就是去做一个**op转换器**，之后所有的 **`xxxExp`** 的结构和这个基本一致。
+```java
+public String Operator(String op){
+    String opt="";
+    switch(op){
+        case "+": opt="add";break;
+        case "-": opt="sub";break;
+        case "*": opt="mul";break;
+        case "/": opt="sdiv";break;
+        case "%": opt="srem";break;
+        case "==": opt="eq";break;
+        case "!=": opt="ne";break;
+        case ">": opt="sgt";break;
+        case ">=": opt="sge";break;
+        case "<": opt="slt";break;
+        case "<=": opt="sle";break;
+        case "&&": opt="and";break;
+        case "||": opt="or";break;
+    }
+    return opt;
+}
+```
+> 模操作不是mod！模操作不是mod！模操作不是mod！重要的事情说三遍（
 
+测试样例：
+```c
+int main() {
+    return 1 * 2 * 3 + 4 + 5 + 6 + 7 * 8 + 9 * 10 * 11;
+}
+```
+#### 2.负号处理
+依然是从栗子入手。我们思考下面的表达式
+```
+------+--+-2
+```
+如果让计算机计算这个表达式，那么它会**从右往左**一步步计算，即一个符号一个符号计算。但是如果叫一个小学二年级的小学生来计算这个表达式，他会告诉你： **`数负号`** 
+也就是说，由于我们的 **`Number`** 是一个无前导0，无符号的数。所以如果 **`UnaryOp`** 是 **`+`**，直接无视。如果是 **`-`** ，那么就做一次负运算即可。
+```java
+public void UnaryExp(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    if(a.get(0).getContent().equals("<UnaryOp>")){
+        generate(a.get(1));//UnaryExp
+        if(a.get(0).getChild().get(0).getContent().equals("-")){
+            output(tags()+"%v"+this.regId+" = sub i32 0, "+a.get(1).getValue()+"\n");//-a == 0-a 的运算
+            ast.setRegId("%v"+this.regId);
+            ast.setValue("%v"+this.regId);
+            this.regId++;
+        }
+        else if(a.get(0).getChild().get(0).getContent().equals("+")){ast.setValue(a.get(1).getValue());}//+无视
+        else if(a.get(0).getChild().get(0).getContent().equals("!")){/*条件判断的时候再讨论*/}
+    }
+    ···
+}
+```

@@ -8,12 +8,12 @@
 
 - 2022.10.7 Finished Semantic analysis & Error handling
 
-- 2022.10.21 Reconstruct Syntax analysis(SyntaxProcedure2: add AstTree)
+- 2022.10.21 Reconstruct Syntax analysis( SyntaxProcedure2: add AstTree )
 
-- 2022.10.26 Finished LLVM IR generate Part I( Declaration & Function & Expression)
+- 2022.10.26 Finished LLVM IR generate Part I( Declaration & Function & Expression )
 
 - 2022.11.1 Finished LLVM IR generate Part II( Condition & Loop )
 
-
+- 2022.11.4 Finished LLVM IR generate Part III( Array & Pointer )
 
 
