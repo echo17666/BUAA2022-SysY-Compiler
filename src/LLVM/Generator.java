@@ -1,42 +1,34 @@
 package LLVM;
-
 import Datam.AstNode;
 import Datam.KeyValue;
-
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.security.Key;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 
 public class Generator{
     int level=0;
-    AstNode Rootast = null;
+    AstNode Rootast;
     int regId=1;
     int nowtag=0;
     ArrayList <AstNode> stack = new ArrayList<>();
-    HashMap <String,AstNode> global= new HashMap();
+    HashMap <String,AstNode> global= new HashMap <> ();
     public Generator(AstNode ast){
        this.Rootast=ast;
 
     }
-
     public String tags(){
-        String s="";
+        StringBuilder s=new StringBuilder();
         for(int i=0;i<4*nowtag;i++){
-            s+=" ";
+            s.append(" ");
         }
-        return s;
+        return s.toString();
     }
-
 
     public void generating(){
         generate(this.Rootast);
     }
-
-
     public void generate(AstNode ast){
         if(ast.getContent().equals("<ConstDef>")){ConstDef(ast);}
         else if(ast.getContent().equals("<ConstInitVal>")){ConstInitVal(ast);}
@@ -68,6 +60,7 @@ public class Generator{
             }
         }
     }
+
     public void ConstDef(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         AstNode ident = a.get(0);
@@ -180,7 +173,6 @@ public class Generator{
             stack.add(ident);
         }
     }
-
     public void ConstInitVal(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         KeyValue k= ast.getKey();
@@ -252,7 +244,6 @@ public class Generator{
             }
         }
     }
-
     public void ConstExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         if(a.size()==1){
@@ -409,14 +400,6 @@ public class Generator{
         else{
             ident.setLevel(this.level);
             stack.add(ident);
-        }
-    }
-    public void InitVal(AstNode ast){
-        ArrayList<AstNode> a=ast.getChild();
-        if(a.size()==1){
-            generate(a.get(0));
-            ast.getKey().setIntVal(a.get(0).getValue());
-            ast.setValue(a.get(0).getValue());
         }
     }
     public void FuncDef(AstNode ast){
@@ -594,7 +577,7 @@ public class Generator{
             a.get(2).setYesId(this.regId+1);
             int YesId = this.regId+1;
             int NoId=0;
-            int StmtId=0;
+            int StmtId;
             if(a.size()>5){
                 a.get(2).setNoId(this.regId+2);
                 a.get(2).setStmtId(this.regId+3);
@@ -630,7 +613,6 @@ public class Generator{
             output(tags()+"br label %v"+this.regId+"\n");
             output("\nv"+this.regId+":\n");
             int YesId = this.regId+1;
-            int NoId=this.regId+2;
             int StmtId=this.regId+2;
             a.get(2).setYesId(this.regId+1);
             a.get(2).setNoId(this.regId+2);
@@ -652,7 +634,6 @@ public class Generator{
             output(tags()+"br label %v"+ast.getStmtId()+"\n");
         }
     }
-
     public void LVal(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         AstNode ident = a.get(0);
@@ -958,7 +939,6 @@ public class Generator{
         ArrayList<AstNode> a=ast.getChild();
         ast.setValue(a.get(0).getContent());
     }
-
     public void UnaryExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         if(a.get(0).getContent().equals("<UnaryOp>")){
@@ -1020,17 +1000,16 @@ public class Generator{
 
         }
     }
-
     public void FuncRParams(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         generate(a.get(0));
-        String Value;
-        Value =a.get(0).getKey().getAddrType()+" "+a.get(0).getValue();
+        StringBuilder Value;
+        Value=new StringBuilder(a.get(0).getKey().getAddrType()+" "+a.get(0).getValue());
         for(int i=2;i<a.size();i+=2){
             generate(a.get(i));
-            Value=Value+", "+a.get(i).getKey().getAddrType()+" "+a.get(i).getValue();
+            Value.append(", ").append(a.get(i).getKey().getAddrType()).append(" ").append(a.get(i).getValue());
         }
-        ast.setValue(Value);
+        ast.setValue(Value.toString());
     }
     public void AddMulExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
@@ -1115,7 +1094,6 @@ public class Generator{
 
         }
     }
-
     public void LOrExp(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();
         for(int i=0;i<a.size()-2;i+=2){
@@ -1153,14 +1131,6 @@ public class Generator{
         }
 
     }
-
-
-
-
-
-
-
-
 
     public String Operator(String op){
         String opt="";

@@ -30,6 +30,8 @@
     - [4.常量表达式（Lab 2）](#4常量表达式lab-2)
       - [1.四则运算](#1四则运算)
       - [2.负号处理](#2负号处理)
+    - [5.局部变量（Lab3）](#5局部变量lab3)
+      - [1.局部变量与赋值](#1局部变量与赋值)
 
 <!-- /TOC -->
 ## 1.参考编译器介绍
@@ -916,12 +918,14 @@ LLvmMain llvmMain = new LLvmMain(syntax.getAst());
 
 **`LLVM`** 相比就简单不少，首先目标代码就是中间代码，只需要做 **`翻译器`** ，平台的评测机不是对文本进行比对，而是将你生成的LLVM中间代码**喂给评测机去解释运行**，所以即使生成代码和要求不一样，结果也可能是对的。LLVM的好处包括但不限于：**代码生成方式多样**，寄存器标号可以**不按顺序**，且可以**无限叠加**，有一套**完整的教程**等。唯一的问题是需要去自学LLVM的语法。
 
-**`MIPS`** 一开始可能就不在考虑范围内，所以调研可能不算全面，~~写 **`MIPS`** 的佬应该也不会看我的博客~~。 **`MIPS`** 和 **`PCode`** 相同，都需要 **`翻译器`** 和 **`解释器`** ，但与 **`PCode`** 不同的是， **`MIPS`** 的中间代码必须是 **`规范的四元式`** ，因为后面代码优化需要考察中间代码。而且MIPS寄存器标号**只有32个**，还要用寄存器的话就要放到栈内。好处就是可以多去卷一卷竞速的分数。
+**`MIPS`** 一开始可能就不在考虑范围内，所以调研可能不算全面，~~写 **`MIPS`** 的佬应该也不会看我的博客~~。 **`MIPS`** 和 **`PCode`** 相同，都需要 **`翻译器`** 和 **`解释器`** ，但与 **`PCode`** 不同的是， **`MIPS`** 的要首先将C翻译成中间代码，然后再把中间代码翻译到 **`MIPS`** ，因为后面代码优化需要考察中间代码。而且MIPS寄存器标号**只有32个**，还要用寄存器的话就要放到栈内。好处就是可以多去卷一卷竞速的分数。
 
 在调研一周之后，果断投入 **`LLVM`** 的怀抱
 
 ### 2.编码前的总设计
 由于LLVM的设计直接参考[往届软院编译实验](https://buaa-se-compiling.github.io/miniSysY-tutorial/pre/llvm.html)，所以编码设计顺序也按照上述实验来分析。 **`代码生成1`** 的实验包含**Lab1，2，3，5，8**。 **`代码生成2`** 的实验包含**Lab4，6，7**。且在每个实验之后会配一些自己认为比较强的**testfile**仅供参考。
+
+还有一点**十分重要**，由于上述编译实验文档采用的版本是 **`LLVM10`** ，而本次实验采用的是 **`LLVM6`** ，可能会出现版本不兼容的情况。经过测试，以下写法均可适用于 **`LLVM10`** 与 **``LLVM6``**，方法就是把所有寄存器编号从**数字**改成**字符串**，即所有 **`%`** 后添加一串字母后再添加数字，这样 **`LLVM`** 在编译时会对寄存器重新编号，从而解决问题。
 
 与前面一样，我们为代码生成设计**入口函数**
 ```java
@@ -1092,8 +1096,8 @@ public void AddMulExp(AstNode ast){
             String right=a.get(i+1).getValue();    //获取第二个子节点的值
             String opt=Operator(op);               //获取运算符对应的LLVM指令
             output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n"); //输出LLVM指令
-            a.get(i+1).setRegId("%v"+this.regId); //设置运算完的值所存的地址
-            a.get(i+1).setValue("%v"+this.regId); //设置运算完的值
+            a.get(i+1).setRegId("%v"+this.regId); //设置地址
+            a.get(i+1).setValue("%v"+this.regId); //设置值
             this.regId++;                         //寄存器编号+1
             left=a.get(i+1).getValue();           //将运算完的值留到下一个循环
         }
@@ -1149,6 +1153,8 @@ int main() {
 ```
 如果让计算机计算这个表达式，那么它会**从右往左**一步步计算，即一个符号一个符号计算。但是如果叫一个小学二年级的小学生来计算这个表达式，他会告诉你： **`数负号`** 
 也就是说，由于我们的 **`Number`** 是一个无前导0，无符号的数。所以如果 **`UnaryOp`** 是 **`+`**，直接无视。如果是 **`-`** ，那么就做一次负运算即可。
+由于 **`UnaryExp`** 与 **`UnaryOp`** 是右递归，故其树的构建是**一层层**的，而没采用类似于 **`AddExp/MulExp`** 那种左递归采用的同层结构，所以其运算顺序是**自底向上**的，也即**从右往左**运算。
+
 ```java
 public void UnaryExp(AstNode ast){
     ArrayList<AstNode> a=ast.getChild();
@@ -1164,5 +1170,99 @@ public void UnaryExp(AstNode ast){
         else if(a.get(0).getChild().get(0).getContent().equals("!")){/*条件判断的时候再讨论*/}
     }
     ···
+}
+```
+测试样例：
+```c
+int main() {
+    return --+---+1 * +2 * ---++3 + 4 + --+++5 + 6 + ---+--7 * 8 + ----++--9 * ++++++10 * -----11;
+}
+```
+
+### 5.局部变量（Lab3）
+#### 1.局部变量与赋值
+首先上结论：由于我们给定的文件**默认是正确**的，即不存在修改 **`const`** 变量的情况，所以变量是不是const**不影响程序运行**。我们会发现在指导书中const变量是**不输出**的，但是输出与否完全不影响结果，所以我们会将其输出。
+
+在局部变量中，我们其实还是不需要知道我们存进去的**值**是什么，我们操作的本质依旧是 **`寄存器`** 。这一点和 **`Lab5`** 的 **`全局变量`** 有很大差别。所以区别将在下一个部分进行说明。同时，这里的局部变量默认都在函数一层里。多层的变量也将在 **`Lab5`** 的 **`作用域`** 内说明。
+
+所以这么一看，其实这一部分还是很简单的，即只要读到 **`ConstDef`/`VarDef`** 的时候，我们开辟一个空间即可。如果有值，则把值 **`store`** 进去即可。由于ConstDef和VarDef有十分甚至九分相似，所以完全可以放到一起写。
+
+同时，我们的局部变量需要有计算功能。这就需要我们具有取值功能。所以事先开一个 **栈式符号表`stack`**，用于存储局部变量。
+```java
+ArrayList <AstNode> stack = new ArrayList<>();
+public void VarDef(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    AstNode ident = a.get(0);
+    KeyValue k=ident.getKey();
+    if(a.size()==1||a.size()==3){
+        output(tags()+"%v"+this.regId+" = alloca i32\n");
+        ident.setValue("%v"+this.regId);
+        ident.setRegId("%v"+this.regId);
+        this.regId++;
+        if(a.size()==3){
+            generate(a.get(2));//ConstInitVal/InitVal
+            output(tags()+"store i32 "+a.get(2).getValue()+", i32* "+ident.getRegId()+"\n");//这时候store进去的就是地址寄存器
+        }
+    }
+    else if(a.size()==4||a.size()==6){/*一维定义/赋值*/}
+    else if(a.size()==7||a.size()==9){/*二维定义/赋值*/}
+    stack.add(ident);//推入栈
+}
+```
+这时候我们就需要用到 **`getRegId()`** 了。在之后，对定义的值的 **取址操作** 用到的都是这个方法的寄存器。接着我们编写下面的函数。
+```java
+public void ConstInitVal(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    generate(a.get(0));
+    ast.setValue(a.get(0).getValue());
+}
+```
+这里需要说明的是，由于 **`ConstInitVal`** 是递归的，所以其判断维度其实就是降维操作。我们在 **`Lab7数组`** 的时候会说明。
+
+- ConstInitVal → ConstExp | `'{'` [ ConstInitVal { `','` ConstInitVal } ] `'}'`
+
+接下来的 **`ConstExp`** 推导到 **`AddExp`** ，之后就连起来了。只需要把 **`AddExp`** 的 **`Value`** 往上传递即可。
+
+由此，我们的局部变量的值支持上述四则运算和正负号了。
+
+在取值的时候，我们需要调用 **`load`** 操作，调用所取的值的地址，获取存储的值。
+不难发现，整张文法表内，取值和赋值的操作都离不开 **`LVal`** ，因为其调用的一定是**已经定义过的值**，这个值**一定在符号表**内。
+- PrimaryExp → LVal 
+- LVal → Ident {`'['` Exp `']'`} 
+
+所以，我们在运行 **`LVal`** 的时候，首先去查找对应的**ident**，关于该变量的全部信息在 **`Const/VarDef`** 的时候已经推入栈了，我们需要先获取到其信息，然后获取该变量获取的寄存器，和值，最后向上传递即可。
+```java
+public void LVal(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    AstNode ident = a.get(0);
+    String identName=ident.getContent();
+    int check=0;
+    for(int i=stack.size()-1;i>=0;i--){
+        if(stack.get(i).getContent().equals(identName)){
+            if(a.size()==1){
+                output(tags()+"%v"+this.regId+" = load i32, i32* "+stack.get(i).getRegId()+"\n");
+                ast.setValue("%v"+this.regId);
+                ast.setRegId(stack.get(i).getRegId());
+                this.regId++;       
+            }
+            else{/*一维/二维取址*/}
+            check=1;
+            break;
+        }
+    }
+    if(check==0){/*全局变量*/}
+        
+}
+
+```
+
+测试样例：
+```c
+int main() {
+    int a;
+    int b=--+--5*++-++9+--+-3;
+    int _c23;
+    _c23=1+2+3-++-++4;
+    return 0;
 }
 ```
