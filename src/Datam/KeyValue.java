@@ -10,7 +10,7 @@ public class KeyValue{
     String intVal="";
     String [] d1Value = null;
     String [][] d2Value = null;
-    ArrayList <String> value = new ArrayList<>();
+
 
     public void setD1(int d1){
         this.d1=d1;
@@ -62,14 +62,6 @@ public class KeyValue{
 
     public String[][] getD2Value(){
         return d2Value;
-    }
-
-    public void setValue(ArrayList<String> value){
-        this.value=value;
-    }
-
-    public ArrayList<String> getValue(){
-        return value;
     }
 
     public void setIntVal(String intVal){

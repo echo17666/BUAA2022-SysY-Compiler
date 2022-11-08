@@ -1031,10 +1031,10 @@ public void Stmt(AstNode ast){
 ```
 我们发现， **`return`**  语句的输出是 **`ret i32`** ，而 **`return`** 后面的表达式是 **`Exp()`** ，这就需要我们一级级调用，找到根节点，然后通过 **`综合属性`** 从叶结点一步步传到根节点。
 
-而在中间代码生成的过程中，我们在语法树中向上传递的综合属性，本质上是**寄存器的传递**，所以从根本上，我们不需要知道究竟这个东西现在值是多少，这一步是解释器去做的。我们只需要知道，这个值现在存在**几号寄存器**，或者这个常量究竟**是多少**。如果了解了这个，那么我们就可以在结点类中添加以下字段
+而在中间代码生成的过程中，我们在语法树中向上传递的综合属性，本质上是**寄存器的传递**，所以从根本上，我们不需要知道究竟这个东西现在值是多少，这一步是解释器去做的。我们只需要知道，这个值现在存在**几号寄存器**，或者这个常量究竟**是多少**。可以说，这个是整个 **`中间代码`** 的理解的关键，即传的是 **`常数`** ，还是 **`保存数的寄存器`** ，还是 **`地址的寄存器`** 。如果了解了这个，那么我们就可以在结点类中添加以下字段
 ```java
-String regId="";//符号表内的寄存器值
-String value="";//综合属性
+String regId="";//地址寄存器
+String value="";//值寄存器
 String returnType="";//返回值类型(函数时使用)
 ```
 这里我们只需要使用 **`value`** ，即如果这个值是常数 **`Number`** ，那么value向上传递的就是常数，否则就传递寄存器。由于**Lab1不涉及四则运算**，故我们只需要把下层的值传递给上层。这样，我们就可以在 **`xxxExp()`** 中写出以下代码
@@ -1185,6 +1185,22 @@ int main() {
 
 在局部变量中，我们其实还是不需要知道我们存进去的**值**是什么，我们操作的本质依旧是 **`寄存器`** 。这一点和 **`Lab5`** 的 **`全局变量`** 有很大差别。所以区别将在下一个部分进行说明。同时，这里的局部变量默认都在函数一层里。多层的变量也将在 **`Lab5`** 的 **`作用域`** 内说明。
 
+我们可以把所有要存储的**初始值**创建一个类 **`KeyValue`** ，然后将其存到结点 **`AstNode`** 类中。
+```java
+public class KeyValue{
+    int dim=0;//维度
+    int d1=0;//第一个维度数（例如，a[3]就是3）
+    int d2=0;//第二个未读数（例如，a[2][4]就是4）
+    String AddrType="i32";//这里是取址的类型，主要用于函数调用各种维度时使用
+    String intVal="";//0维常数初值存储
+    String [] d1Value = null;//1维常数初值存储
+    String [][] d2Value = null;//2维常数初值存储
+}
+public class AstNode{
+    KeyValue key = new KeyValue();
+}
+```
+
 所以这么一看，其实这一部分还是很简单的，即只要读到 **`ConstDef`/`VarDef`** 的时候，我们开辟一个空间即可。如果有值，则把值 **`store`** 进去即可。由于ConstDef和VarDef有十分甚至九分相似，所以完全可以放到一起写。
 
 同时，我们的局部变量需要有计算功能。这就需要我们具有取值功能。所以事先开一个 **栈式符号表`stack`**，用于存储局部变量。
@@ -1203,10 +1219,14 @@ public void VarDef(AstNode ast){
             generate(a.get(2));//ConstInitVal/InitVal
             output(tags()+"store i32 "+a.get(2).getValue()+", i32* "+ident.getRegId()+"\n");//这时候store进去的就是地址寄存器
         }
+        else if(a.size()==1){
+            k.setIntVal("0");//如果不声明，设置初始值为0，且不store（局部变量只分配地址不初始化值，所以置任何数都可以。而全局变量初始化都是0，所以图方便这里直接置0了）
+        }
     }
     else if(a.size()==4||a.size()==6){/*一维定义/赋值*/}
     else if(a.size()==7||a.size()==9){/*二维定义/赋值*/}
-    stack.add(ident);//推入栈
+    ident.setKey(k);//把赋好的值存入变量名的结点
+    stack.add(ident);//把变量名结点推入栈式符号表
 }
 ```
 这时候我们就需要用到 **`getRegId()`** 了。在之后，对定义的值的 **取址操作** 用到的都是这个方法的寄存器。接着我们编写下面的函数。
@@ -1235,7 +1255,8 @@ public void ConstInitVal(AstNode ast){
 public void LVal(AstNode ast){
     ArrayList<AstNode> a=ast.getChild();
     AstNode ident = a.get(0);
-    String identName=ident.getContent();
+    String identName=ident.getContent();、
+    KeyValue k = ident.getKey();
     int check=0;
     for(int i=stack.size()-1;i>=0;i--){
         if(stack.get(i).getContent().equals(identName)){
@@ -1251,7 +1272,7 @@ public void LVal(AstNode ast){
         }
     }
     if(check==0){/*全局变量*/}
-        
+    ast.setKey(k);
 }
 
 ```

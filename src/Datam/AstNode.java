@@ -5,7 +5,6 @@ import java.util.ArrayList;
 public class AstNode{
     String content="";
     ArrayList<AstNode> child = new ArrayList<AstNode>();
-    AstNode fatherAst = null;
     String regId="";
     int level=0;
     int StmtId=0;
@@ -13,7 +12,6 @@ public class AstNode{
     int NoId=0;
     int BreakId=0;
     int ContinueId=0;
-    boolean inStack=true;
     String value="";
     String returnType="";
     KeyValue key = new KeyValue();
@@ -21,7 +19,6 @@ public class AstNode{
         this.content=content;
     }
     public void addNode(AstNode a){
-        a.setFatherAst(this);
         child.add(a);
     }
 
@@ -40,14 +37,6 @@ public class AstNode{
 
     public void setContinueId(int continueId){
         ContinueId=continueId;
-    }
-
-    public boolean isInStack(){
-        return inStack;
-    }
-
-    public void setInStack(boolean inStack){
-        this.inStack=inStack;
     }
 
     public ArrayList<AstNode> getChild(){
@@ -96,21 +85,10 @@ public class AstNode{
         this.returnType=returnType;
     }
 
-    public void setFatherAst(AstNode fatherAst){
-        this.fatherAst=fatherAst;
-    }
-
-    public AstNode getFatherAst(){
-        return fatherAst;
-    }
-
     public String getContent(){
         return content;
     }
 
-    public void setChild(ArrayList<AstNode> child){
-        this.child=child;
-    }
     public AstNode changeNode(){
         AstNode s = this.child.get(this.child.size()-1);
         this.child.remove(this.child.size()-1);

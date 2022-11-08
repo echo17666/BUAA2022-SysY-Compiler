@@ -644,7 +644,7 @@ public class Generator{
             if(stack.get(i).getContent().equals(identName)){
                 k=stack.get(i).getKey();
                 if(a.size()==1){
-                    if(stack.get(i).getKey().getDim()==0){
+                    if(stack.get(i).getKey().getDim()==0){//int a;
                         output(tags()+"%v"+this.regId+" = load i32, i32* "+stack.get(i).getRegId()+"\n");
                         k.setAddrType("i32");
                         ast.setValue("%v"+this.regId);
@@ -652,14 +652,14 @@ public class Generator{
                         this.regId++;
                     }
                     else if(stack.get(i).getKey().getDim()==1){
-                        if(k.getD1()!=0){
+                        if(k.getD1()!=0){//int a[2]{func(a)}
                             output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x i32], ["+k.getD1()+" x i32]*"+stack.get(i).getRegId()+", i32 0, i32 0\n");
                             k.setAddrType("i32*");
                             ast.setValue("%v"+(this.regId));
                             ast.setRegId("%v"+(this.regId));
                             this.regId+=2;
                         }
-                        else{
+                        else{//func(int a[]){func(a)}
                             k.setAddrType("i32*");
                             output(tags()+"%v"+this.regId+" = load "+k.getAddrType()+", "+k.getAddrType()+" * "+stack.get(i).getRegId()+"\n");
                             ast.setValue("%v"+(this.regId));
@@ -668,14 +668,14 @@ public class Generator{
                         }
                     }
                     else if(stack.get(i).getKey().getDim()==2){
-                        if(k.getD1()!=0){
+                        if(k.getD1()!=0){//int a[2][3]{func(a)}
                             output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]*"+stack.get(i).getRegId()+", i32 0, i32 0\n");
                             k.setAddrType("["+k.getD2()+" x i32]*");
                             ast.setValue("%v"+(this.regId));
                             ast.setRegId("%v"+(this.regId));
                             this.regId++;
                         }
-                        else{
+                        else{//func(int a[][3]){func(a)}
                             output(tags()+"%v"+this.regId+" = load ["+k.getD2()+" x i32] *, ["+k.getD2()+" x i32]* * "+stack.get(i).getRegId()+"\n");
                             k.setAddrType("["+k.getD2()+" x i32]*");
                             ast.setValue("%v"+(this.regId));
@@ -686,7 +686,7 @@ public class Generator{
                 }
                 else if(a.size()==4){
                     if(stack.get(i).getKey().getDim()==1){
-                        if(k.getD1()!=0){
+                        if(k.getD1()!=0){//int a[2]{func(a[1])}
                             generate(a.get(2));
                             output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x i32], ["+k.getD1()+" x i32]*"+stack.get(i).getRegId()+", i32 0, i32 "+a.get(2).getValue()+"\n");
                             output(tags()+"%v"+(this.regId+1)+" = load i32, i32* %v"+this.regId+"\n");
@@ -695,8 +695,7 @@ public class Generator{
                             ast.setRegId("%v"+(this.regId));
                             this.regId+=2;
                         }
-                        else{
-                            //int a[]; a
+                        else{//func(int b,int a[]){func(a[2],xxx)}
                             generate(a.get(2));
                             output(tags()+"%v"+this.regId+" = load i32*, i32* * "+stack.get(i).getRegId()+"\n");
                             output(tags()+"%v"+(this.regId+1)+" = getelementptr i32, i32* %v"+this.regId+", i32 "+a.get(2).getValue()+"\n");
@@ -708,7 +707,7 @@ public class Generator{
                         }
                     }
                     else if(stack.get(i).getKey().getDim()==2){
-                        if(k.getD1()!=0){
+                        if(k.getD1()!=0){//int a[2][3]{func(a[1])}
                             generate(a.get(2));
                             output(tags()+"%v"+this.regId+" = mul i32 "+a.get(2).getValue()+", "+k.getD2()+"\n");
                             this.regId++;
@@ -720,8 +719,7 @@ public class Generator{
                             ast.setRegId("%v"+(this.regId));
                             this.regId+=1;
                         }
-                        else{
-                            // int a[]; a[2]
+                        else{//func(int b[],int a[][3]){func(a[2],xxx)}
                             generate(a.get(2));
                             output(tags()+"%v"+this.regId+" = load ["+k.getD2()+" x i32] *, ["+k.getD2()+" x i32]* * "+stack.get(i).getRegId()+"\n");
                             this.regId++;
@@ -738,7 +736,7 @@ public class Generator{
                 else if(a.size()==7){
                     generate(a.get(2));
                     generate(a.get(5));
-                    if(k.getD1()!=0){
+                    if(k.getD1()!=0){//int a[2][3]{func(a[1][2])}
                         output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]*"+stack.get(i).getRegId()+", i32 0, i32 "+a.get(2).getValue()+", i32 "+a.get(5).getValue()+"\n");
                         output(tags()+"%v"+(this.regId+1)+" = load i32, i32* %v"+this.regId+"\n");
                         k.setAddrType("i32");
@@ -746,7 +744,7 @@ public class Generator{
                         ast.setRegId("%v"+(this.regId));
                         this.regId+=2;
                     }
-                    else{
+                    else{//func(int b,int a[][3]){func(a[2][2],xxx)}
                         output(tags()+"%v"+this.regId+" = load ["+k.getD2()+" x i32] *, ["+k.getD2()+" x i32]* * "+stack.get(i).getRegId()+"\n");
                         this.regId++;
                         output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 "+a.get(2).getValue()+"\n");
@@ -775,112 +773,52 @@ public class Generator{
                         this.regId++;
                     }
                     else if(k.getDim()==1){
-                        if(k.getD1()!=0){
-                            output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x i32], ["+k.getD1()+" x i32]* @"+identName+", i32 0, i32 0\n");
-                            k.setAddrType("i32*");
-                            ast.setValue("%v"+(this.regId));
-                            ast.setRegId("%v"+(this.regId));
-                            this.regId+=2;
-                        }
-                        else{
-                            k.setAddrType("i32*");
-                            output(tags()+"%v"+this.regId+" = load "+k.getAddrType()+", "+k.getAddrType()+"* @"+identName+"\n");
-                            ast.setValue("%v"+(this.regId));
-                            ast.setRegId("%v"+(this.regId));
-                            this.regId+=1;
-                        }
+                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x i32], ["+k.getD1()+" x i32]* @"+identName+", i32 0, i32 0\n");
+                        k.setAddrType("i32*");
+                        ast.setValue("%v"+(this.regId));
+                        ast.setRegId("%v"+(this.regId));
+                        this.regId+=2;
                     }
                     else if(k.getDim()==2){
-                        if(k.getD1()!=0){
-                            output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]* @"+identName+", i32 0, i32 0\n");
-                            k.setAddrType("["+k.getD2()+" x i32]*");
-                            ast.setValue("%v"+(this.regId));
-                            ast.setRegId("%v"+(this.regId));
-                            this.regId++;
-                        }
-                        else{
-                            output(tags()+"%v"+this.regId+" = load ["+k.getD2()+" x i32] *, ["+k.getD2()+" x i32]* * @"+identName+"\n");
-                            k.setAddrType("["+k.getD2()+" x i32]*");
-                            ast.setValue("%v"+(this.regId));
-                            ast.setRegId("@"+identName);
-                            this.regId++;
-                        }
+                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]* @"+identName+", i32 0, i32 0\n");
+                        k.setAddrType("["+k.getD2()+" x i32]*");
+                        ast.setValue("%v"+(this.regId));
+                        ast.setRegId("%v"+(this.regId));
+                        this.regId++;
                     }
                 }
                 else if(a.size()==4){
                     if(k.getDim()==1){
-                        if(k.getD1()!=0){
-                            generate(a.get(2));
-                            output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x i32], ["+k.getD1()+" x i32]* @"+identName+", i32 0, i32 "+a.get(2).getValue()+"\n");
-                            output(tags()+"%v"+(this.regId+1)+" = load i32, i32* %v"+this.regId+"\n");
-                            k.setAddrType("i32");
-                            ast.setValue("%v"+(this.regId+1));
-                            ast.setRegId("%v"+(this.regId));
-                            this.regId+=2;
-                        }
-                        else{
-                            //int a[]; a
-                            generate(a.get(2));
-                            output(tags()+"%v"+this.regId+" = load i32*, i32* * @"+identName+"\n");
-                            output(tags()+"%v"+(this.regId+1)+" = getelementptr i32, i32* %v"+this.regId+", i32 "+a.get(2).getValue()+"\n");
-                            output(tags()+"%v"+(this.regId+2)+" = load i32, i32* %v"+(this.regId+1)+"\n");
-                            ast.setValue("%v"+(this.regId+2));
-                            ast.setRegId("%v"+(this.regId+1));
-                            k.setAddrType("i32");
-                            this.regId+=3;
-                        }
-                    }
-                    else if(k.getDim()==2){
-                        if(k.getD1()!=0){
-                            generate(a.get(2));
-                            output(tags()+"%v"+this.regId+" = mul i32 "+a.get(2).getValue()+", "+k.getD2()+"\n");
-                            this.regId++;
-                            output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]* @"+identName+", i32 0, i32 0\n");
-                            this.regId++;
-                            output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 0, i32 %v"+(this.regId-2)+"\n");
-                            k.setAddrType("i32*");
-                            ast.setValue("%v"+(this.regId));
-                            ast.setRegId("%v"+(this.regId));
-                            this.regId+=1;
-                        }
-                        else{
-                            // int a[]; a[2]
-                            generate(a.get(2));
-                            output(tags()+"%v"+this.regId+" = load ["+k.getD2()+" x i32] *, ["+k.getD2()+" x i32]* * @"+identName+"\n");
-                            this.regId++;
-                            output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 "+a.get(2).getValue()+"\n");
-                            this.regId++;
-                            output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 0, i32 0\n");
-                            k.setAddrType("i32*");
-                            ast.setValue("%v"+(this.regId));
-                            ast.setRegId("%v"+(this.regId));
-                            this.regId++;
-                        }
-                    }
-                }
-                else if(a.size()==7){
-                    generate(a.get(2));
-                    generate(a.get(5));
-                    if(k.getD1()!=0){
-                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]* @"+identName+", i32 0, i32 "+a.get(2).getValue()+", i32 "+a.get(5).getValue()+"\n");
+                        generate(a.get(2));
+                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x i32], ["+k.getD1()+" x i32]* @"+identName+", i32 0, i32 "+a.get(2).getValue()+"\n");
                         output(tags()+"%v"+(this.regId+1)+" = load i32, i32* %v"+this.regId+"\n");
                         k.setAddrType("i32");
                         ast.setValue("%v"+(this.regId+1));
                         ast.setRegId("%v"+(this.regId));
                         this.regId+=2;
                     }
-                    else{
-                        output(tags()+"%v"+this.regId+" = load ["+k.getD2()+" x i32] *, ["+k.getD2()+" x i32]* * @"+identName+"\n");
+                    else if(k.getDim()==2){
+                        generate(a.get(2));
+                        output(tags()+"%v"+this.regId+" = mul i32 "+a.get(2).getValue()+", "+k.getD2()+"\n");
                         this.regId++;
-                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 "+a.get(2).getValue()+"\n");
+                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]* @"+identName+", i32 0, i32 0\n");
                         this.regId++;
-                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 0, i32 "+a.get(5).getValue()+"\n");
-                        output(tags()+"%v"+(this.regId+1)+" = load i32, i32 *%v"+(this.regId)+"\n");
-                        k.setAddrType("i32");
-                        ast.setValue("%v"+(this.regId+1));
+                        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 0, i32 %v"+(this.regId-2)+"\n");
+                        k.setAddrType("i32*");
+                        ast.setValue("%v"+(this.regId));
                         ast.setRegId("%v"+(this.regId));
-                        this.regId+=2;
+                        this.regId+=1;
                     }
+                }
+                else if(a.size()==7){
+                    generate(a.get(2));
+                    generate(a.get(5));
+                    output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]* @"+identName+", i32 0, i32 "+a.get(2).getValue()+", i32 "+a.get(5).getValue()+"\n");
+                    output(tags()+"%v"+(this.regId+1)+" = load i32, i32* %v"+this.regId+"\n");
+                    k.setAddrType("i32");
+                    ast.setValue("%v"+(this.regId+1));
+                    ast.setRegId("%v"+(this.regId));
+                    this.regId+=2;
                 }
             }
             else{
@@ -898,7 +836,6 @@ public class Generator{
                 }
             }
         }
-        ident.setKey(k);
         ast.setKey(k);
     }
     public void Exp(AstNode ast){
