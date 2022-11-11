@@ -934,7 +934,6 @@ public class Generator{
                     output(tags()+"call "+ident.getReturnType()+" @"+ident.getContent()+"("+a.get(2).getValue()+")\n");
                 }
             }
-
         }
     }
     public void FuncRParams(AstNode ast){

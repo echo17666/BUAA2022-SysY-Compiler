@@ -4,16 +4,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Token{
-    String content;
-    Integer lineNumber;
-    Integer wordNumber;
-    String type="Var";
-    String value="none";
-    boolean hasReturn=false;
-    String syntax="";
-    Integer dimension=0;
-    Token FatherToken=null;
-    ArrayList<Token> TokenList=new ArrayList<Token>();
+    String content;  //内容
+    Integer lineNumber; //行号
+    Integer wordNumber; //该行第几个字符
+    String type="Var"; //参数类型（Const/Var/Func/Param/Block）
+    String value="none"; //Block类型（int/void/repeat）（由于只考虑函数末尾是否存在return，所以循环和函数返回值不冲突）
+    boolean hasReturn=false; //函数体内部是否有返回值
+    Integer dimension=0; //函数维度
+    Token FatherToken=null; //父节点
+    ArrayList<Token> TokenList=new ArrayList<Token>(); //子节点（语法树）
     public Token(String content,Integer lineNumber,Integer wordNumber){
         this.content=content;
         this.lineNumber=lineNumber;
@@ -24,13 +23,7 @@ public class Token{
         FatherToken=fatherToken;
     }
 
-    public void setSyntax(String syntax){
-        this.syntax=syntax;
-    }
 
-    public String getSyntax(){
-        return syntax;
-    }
 
     public Token getFatherToken(){
         return FatherToken;

@@ -27,11 +27,20 @@
     - [1.总述](#1总述-2)
     - [2.编码前的总设计](#2编码前的总设计)
     - [3.main函数（Lab1）](#3main函数lab1)
-    - [4.常量表达式（Lab 2）](#4常量表达式lab-2)
+    - [4.常量表达式（Lab2）](#4常量表达式lab2)
       - [1.四则运算](#1四则运算)
       - [2.负号处理](#2负号处理)
     - [5.局部变量（Lab3）](#5局部变量lab3)
       - [1.局部变量与赋值](#1局部变量与赋值)
+      - [2.调用函数](#2调用函数)
+    - [6.作用域与全局变量（Lab5）](#6作用域与全局变量lab5)
+      - [1.作用域与块](#1作用域与块)
+      - [2.全局变量](#2全局变量)
+    - [7.函数1（Lab8-1）](#7函数1lab8-1)
+      - [1.函数定义](#1函数定义)
+      - [2.函数调用](#2函数调用)
+    - [8.条件语句（Lab4）](#8条件语句lab4)
+      - [1.if语句与条件表达式](#1if语句与条件表达式)
 
 <!-- /TOC -->
 ## 1.参考编译器介绍
@@ -1071,8 +1080,19 @@ int main(){
     return 2147483647;
 }
 ```
+```llvm
+declare i32 @getint()
+declare void @putint(i32)
+declare void @putch(i32)
+declare void @putstr(i8*)
+;以后上面四行就不显示了
+define dso_local i32 @main() {
+    ret i32 2147483647
+}
 
-### 4.常量表达式（Lab 2）
+```
+
+### 4.常量表达式（Lab2）
 #### 1.四则运算
 开始写代码前，**举个栗子**
 
@@ -1140,12 +1160,6 @@ public String Operator(String op){
 ```
 > 模操作不是mod！模操作不是mod！模操作不是mod！重要的事情说三遍（
 
-测试样例：
-```c
-int main() {
-    return 1 * 2 * 3 + 4 + 5 + 6 + 7 * 8 + 9 * 10 * 11;
-}
-```
 #### 2.负号处理
 依然是从栗子入手。我们思考下面的表达式
 ```
@@ -1176,6 +1190,47 @@ public void UnaryExp(AstNode ast){
 ```c
 int main() {
     return --+---+1 * +2 * ---++3 + 4 + --+++5 + 6 + ---+--7 * 8 + ----++--9 * ++++++10 * -----11;
+}
+```
+```llvm
+define dso_local i32 @main() {
+    %v1 = sub i32 0, 1
+    %v2 = sub i32 0, %v1
+    %v3 = sub i32 0, %v2
+    %v4 = sub i32 0, %v3
+    %v5 = sub i32 0, %v4
+    %v6 = mul i32 %v5, 2
+    %v7 = sub i32 0, 3
+    %v8 = sub i32 0, %v7
+    %v9 = sub i32 0, %v8
+    %v10 = mul i32 %v6, %v9
+    %v11 = add i32 %v10, 4
+    %v12 = sub i32 0, 5
+    %v13 = sub i32 0, %v12
+    %v14 = add i32 %v11, %v13
+    %v15 = add i32 %v14, 6
+    %v16 = sub i32 0, 7
+    %v17 = sub i32 0, %v16
+    %v18 = sub i32 0, %v17
+    %v19 = sub i32 0, %v18
+    %v20 = sub i32 0, %v19
+    %v21 = mul i32 %v20, 8
+    %v22 = add i32 %v15, %v21
+    %v23 = sub i32 0, 9
+    %v24 = sub i32 0, %v23
+    %v25 = sub i32 0, %v24
+    %v26 = sub i32 0, %v25
+    %v27 = sub i32 0, %v26
+    %v28 = sub i32 0, %v27
+    %v29 = mul i32 %v28, 10
+    %v30 = sub i32 0, 11
+    %v31 = sub i32 0, %v30
+    %v32 = sub i32 0, %v31
+    %v33 = sub i32 0, %v32
+    %v34 = sub i32 0, %v33
+    %v35 = mul i32 %v29, %v34
+    %v36 = add i32 %v22, %v35
+    ret i32 %v36
 }
 ```
 
@@ -1258,12 +1313,12 @@ public void LVal(AstNode ast){
     String identName=ident.getContent();、
     KeyValue k = ident.getKey();
     int check=0;
-    for(int i=stack.size()-1;i>=0;i--){
+    for(int i=stack.size()-1;i>=0;i--){//一定是倒序搜索，原因在Lab5说明
         if(stack.get(i).getContent().equals(identName)){
             if(a.size()==1){
-                output(tags()+"%v"+this.regId+" = load i32, i32* "+stack.get(i).getRegId()+"\n");
-                ast.setValue("%v"+this.regId);
-                ast.setRegId(stack.get(i).getRegId());
+                output(tags()+"%v"+this.regId+" = load i32, i32* "+stack.get(i).getRegId()+"\n");//取值
+                ast.setValue("%v"+this.regId);//设置值寄存器
+                ast.setRegId(stack.get(i).getRegId());//设置地址寄存器
                 this.regId++;       
             }
             else{/*一维/二维取址*/}
@@ -1276,14 +1331,507 @@ public void LVal(AstNode ast){
 }
 
 ```
+而对于赋值，则是在 **`Stmt`** 中进行的。我们不难发现，在 **`Stmt`** 中有如下文法
+- LVal `'='` Exp `';'`
+  
+这也是所有文法中唯一一个可以**对已声明变量赋值**的操作。所以不难发现，我们只需要先执行一遍 **`LVal`** 的语法树，获取 **`LVal`** 的**地址**，再执行 **`Exp`** 的语法树，获取 **`Exp`** 的值，把值 **store** 进地址即可。
+```java
+if(a.get(0).getContent().equals("<LVal>")){
+    generate(a.get(0));//LVal
+    if(a.get(2).getContent().equals("<Exp>")){
+        generate(a.get(2));//Exp
+        output(tags()+"store i32 "+a.get(2).getValue()+", i32* "+a.get(0).getRegId()+"\n");
+    }
+    else if(a.get(2).getContent().equals("getint")){···}
+}
+```
+但是实际操作中，我们不难发现，如果是等号**左边的LVal**，我们需要的是**地址**而非值，故会多**load**一次，但这一次load的寄存器在后面不会使用，所以**不影响正确性**。
+
+
+#### 2.调用函数
+我们的文法只包含 **`printf()`** 和 **`getint()`** 两个函数。 **`getint()`** 没啥好说的，直接抄就行了。 **`printf`** 则需要注意，我们必须先运行一遍 **`%d`** 的语法树，才能作输出。
+
+虽然从代码上看起来，在一堆 **`putch()`** 之间运行 **`Exp()`** 中的 **load/add** 等操作似乎不影响正确性，但是如果我们的 **`%d`** 是**函数的返回值**，那么我们究竟是先输出函数前的字符，还是先运行函数，再统一输出 **`FormatString`** 呢？答案显然是后者。所以我们需要先运行所有的 **`%d`** 代表的 **`Exp`的语法树** ，再去作 **`printf`** 的事情。
+
+```java
+//LVal '=' 'getint''('')'';'
+else if(a.get(2).getContent().equals("getint")){
+    output(tags()+"%v"+this.regId+" = call i32 @getint()"+"\n");
+    output(tags()+"store i32 "+"%v"+this.regId+", i32* "+a.get(0).getRegId()+"\n");//a.get(0)即LVal的地址寄存器
+    this.regId++;
+}
+···
+//'printf''('FormatString{','Exp}')'';'
+else if(a.get(0).getContent().equals("printf")){
+    int parNum=4;//第一个Exp出现的地点是a[4];
+    String s=a.get(2).getContent();//a[2]是FormatString
+    for(int i=1;i<s.length()-1;i++){//先运行所有Exp的语法树
+        if(s.charAt(i)=='%'&&s.charAt(i+1)=='d'){
+            i++;
+            generate(a.get(parNum));
+            parNum+=2;//每两个Exp之间相差2
+        }
+    }
+    parNum=4;//重新指回第一个Exp的位置
+    for(int i=1;i<s.length()-1;i++){
+        if(s.charAt(i)=='%'&&s.charAt(i+1)=='d'){
+            i++;
+            output(tags()+"call void @putint(i32 "+a.get(parNum).getValue()+")\n");//输出运行好的语法树的值
+            parNum+=2;
+        }
+        else if(s.charAt(i)=='\\'&&s.charAt(i+1)=='n'){
+            i++;
+            output(tags()+"call void @putch(i32 10)\n");//输出换行字符
+        }
+        else{
+            output(tags()+"call void @putch(i32 "+(int) s.charAt(i)+")\n");//输出正常字符
+        }
+    }
+}
+```
+至此， **`Lab3`** 完成
 
 测试样例：
 ```c
 int main() {
     int a;
-    int b=--+--5*++-++9+--+-3;
+    int b=5+9*3;
     int _c23;
-    _c23=1+2+3-++-++4;
+    int d;
+    d=getint();
+    a=+++++++-b
+    _c23=1+2+3+b*a+d;
+    printf("a:%d,b:%d,c:%d,d:%d\n",a,b,_c23,(d+2));
+    return _c23;
+}
+```
+
+```llvm
+define dso_local i32 @main() {
+    %v1 = alloca i32
+    %v2 = alloca i32
+    %v3 = mul i32 9, 3
+    %v4 = add i32 5, %v3
+    store i32 %v4, i32* %v2
+    %v5 = alloca i32
+    %v6 = alloca i32
+    %v7 = load i32, i32* %v6;这就是上面提到的无效load，之后都没用到 7号寄存器，不影响正确性
+    %v8 = call i32 @getint()
+    store i32 %v8, i32* %v6
+    %v9 = load i32, i32* %v1
+    %v10 = load i32, i32* %v2
+    %v11 = sub i32 0, %v10
+    store i32 %v11, i32* %v1
+    %v12 = load i32, i32* %v5
+    %v13 = add i32 1, 2
+    %v14 = add i32 %v13, 3
+    %v15 = load i32, i32* %v2
+    %v16 = load i32, i32* %v1
+    %v17 = mul i32 %v15, %v16
+    %v18 = add i32 %v14, %v17
+    %v19 = load i32, i32* %v6
+    %v20 = add i32 %v18, %v19
+    store i32 %v20, i32* %v5
+    %v21 = load i32, i32* %v1
+    %v22 = load i32, i32* %v2
+    %v23 = load i32, i32* %v5
+    %v24 = load i32, i32* %v6
+    %v25 = add i32 %v24, 2 ; 先运行d+2，再从头开始输出printf内容
+    call void @putch(i32 97)
+    call void @putch(i32 58)
+    call void @putint(i32 %v21)
+    call void @putch(i32 44)
+    call void @putch(i32 98)
+    call void @putch(i32 58)
+    call void @putint(i32 %v22)
+    call void @putch(i32 44)
+    call void @putch(i32 99)
+    call void @putch(i32 58)
+    call void @putint(i32 %v23)
+    call void @putch(i32 44)
+    call void @putch(i32 100)
+    call void @putch(i32 58)
+    call void @putint(i32 %v25)
+    call void @putch(i32 10)
+    %v26 = load i32, i32* %v5
+    ret i32 %v26
+}
+```
+
+### 6.作用域与全局变量（Lab5）
+
+#### 1.作用域与块
+本章的核心，顾名思义，就是在 **`Block`** 内。作用域，说白了，就是**内层覆盖外层定义**。那显然，我们就需要获取 **`层`** 的概念。不妨定义一个全局变量 **`level`** 表示层数，函数外为**第0层**。我们有如下写法：
+- 每进入一个 **`Block`** ，层数加一。而这个层数会随着变量一起存入符号表中。
+- 每出一个 **`Block`** ，那么我们就需要把该层级的所有变量推出栈。
+- 搜索相应变量的时候，我们采用**倒序搜索**
+
+这样，我们不难发现，按照这样维护的**动态栈式符号表**，表内存储的数据一定是运行到该行时该作用域**可以使用的变量**，且对于重名的变量，由于内层定义一定比外层后推入栈，所以倒序搜索的时候，最先搜索到的一定是**内层的定义**。这样证明了栈的**正确性与可行性**。
+
+```java
+public void Block(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    for(int i=0;i<a.size();i++){
+        if(a.get(i).getContent().equals("{")){
+            if(level==0){nowtag+=1;}//前置空格，仅作美观，无实意
+            level+=1;//层级+1
+        }
+        else if(a.get(i).getContent().equals("}")){
+            for(int j=stack.size()-1;j>=0;j--){
+                if(stack.get(j).getLevel()==this.level){stack.remove(j);}//删除该层所有变量
+            }
+            level-=1;
+            if(level==0){nowtag-=1;}
+        }
+        else{
+            generate(a.get(i));
+        }
+    }
+}
+```
+现在我们回过头，再去看LVal中我们搜索栈式符号表的操作
+```java
+public void LVal(AstNode ast){···
+    for(int i=stack.size()-1;i>=0;i--){//倒叙搜索
+        if(stack.get(i).getContent().equals(identName)){···}//如果同名，搜索到的一定是内层的定义
+    }
+}
+```
+
+由此，
+#### 2.全局变量
+全局变量和局部变量最本质的区别在于
+- 全局变量的寄存器是直接以 **`@`** 作为前导的
+- 全局变量的赋值**直接获值**，不进行中间计算的代码输出
+
+举个例子：
+```c
+int a=2+3;
+int main(){
+    int a=2+3;
     return 0;
 }
 ```
+其生成代码为
+```llvm
+@a = dso_local global i32 5
+define dso_local i32 @main() {
+    %v1 = alloca i32
+    %v2 = add i32 2, 3
+    store i32 %v2, i32* %v1
+    ret i32 0
+}
+```
+这里就出现了一个问题，就是对于全局变量，我们向上传的综合属性不再是寄存器，取而代之的是**真实的值**。而全局变量和局部变量的根本区别即在于 **`level`**，因为有且仅有全局变量的层级是0。
+
+所以，我们在进行基本计算的时候就需要添加层级判断，如果是全局变量，**直接计算**而不进行输出。
+
+```java
+//AddMulExp()
+if(level>0){//之前的代码
+    output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
+    a.get(i+1).setRegId("%v"+this.regId);
+    a.get(i+1).setValue("%v"+this.regId);
+    this.regId++;
+}
+else{//计算值
+    a.get(i+1).setValue(mathCalculate(left,op,right));//这时候，Value存储的不再是保存值的寄存器，而是值本身
+}
+```
+而数学计算函数也可以直接获取
+```java
+ public String mathCalculate(String left,String op,String right){
+    int a=Integer.parseInt(left);
+    int b=Integer.parseInt(right);
+    int ans=0;
+    switch(op){
+        case "+":ans=a+b;break;
+        case "-":ans=a-b;break;
+        case "*":ans=a*b;break;
+        case "/":ans=a/b;break;
+        case "%":ans=a%b;break;
+        case "==": ans=(a==b)?1:0;break;
+        case "!=": ans=(a!=b)?1:0;break;
+        case ">": ans=(a>b)?1:0;break;
+        case ">=": ans=(a>=b)?1:0;break;
+        case "<": ans=(a<b)?1:0;break;
+        case "<=": ans=(a<=b)?1:0;break;
+    }
+     return ans+"";
+}
+```
+然后，直接在最外层输出参数名字和计算完的值
+```java
+//ConstInitVal
+generate(a.get(0));
+ast.getKey().setIntVal(a.get(0).getValue());//如果是真值就存入真值
+ast.setValue(a.get(0).getValue());//否则就传入寄存器
+//VarDef
+if(level==0){//如果是全局变量就使用真值
+    output("@"+ident.getContent()+" = dso_local global i32 "+k.getIntVal()+"\n");
+}
+```
+
+由于全局变量**只有一层**，**不会重复**，所以可以采用 **`HashMap`** 进行维护。相应的，LVal调用的时候也需要单独说明
+```java
+//VarDef
+if(level==0){
+    global.put(ident.getContent(),ident);
+}
+else{
+    ident.setLevel(this.level);
+    stack.add(ident);
+}
+//LVal
+output(tags()+"%v"+this.regId+" = load i32, i32* @"+identName+"\n");
+```
+
+至此， **`Lab5`** 完成
+
+测试样例
+```c
+const int a=2+3*-4,b=5*6*--7;
+const int bb=a*a;
+int c,d=5+b;
+int main(){
+    printf("%d",c*d);
+    c=5;
+    printf("%d",c*d);
+    {
+        int d=4;
+        printf("%d",a*d);
+    }
+    printf("%d",c*d);
+    return 0;
+}
+```
+```llvm
+@a = dso_local global i32 -10
+@b = dso_local global i32 210
+@bb = dso_local global i32 100 ; 全局变量支持前面定义的全局变量的运算
+@c = dso_local global i32 0 ; 全局变量初始化为 0
+@d = dso_local global i32 105
+
+define dso_local i32 @main() {
+    %v1 = load i32, i32* @c
+    %v2 = load i32, i32* @d
+    %v3 = mul i32 %v1, %v2
+    call void @putint(i32 %v3)
+    %v4 = load i32, i32* @c
+    store i32 5, i32* @c ; 直接对全局变量存值
+    %v5 = load i32, i32* @c
+    %v6 = load i32, i32* @d
+    %v7 = mul i32 %v5, %v6
+    call void @putint(i32 %v7)
+    %v8 = alloca i32 ; 内层定义覆盖外层定义
+    store i32 4, i32* %v8
+    %v9 = load i32, i32* @a
+    %v10 = load i32, i32* %v8 ; 这里load是内层的d
+    %v11 = mul i32 %v9, %v10
+    call void @putint(i32 %v11)
+    %v12 = load i32, i32* @c
+    %v13 = load i32, i32* @d ; 这里已经跳出内层，故调用外层的d
+    %v14 = mul i32 %v12, %v13
+    call void @putint(i32 %v14)
+    ret i32 0
+}
+```
+
+### 7.函数1（Lab8-1）
+为什么要说函数1，是因为在写数组的时候，我们会遇到函数2（
+#### 1.函数定义
+函数定义的写法其实和main函数十分相似，唯一不同的是：
+- 有传入参数
+- 返回类型不同
+- 寄存器编号处理
+
+第三个问题原地解决，因为拿字符串命名的寄存器不存在编号处理。
+
+第二个问题瞬间解决，只需要判断判断，把 **`i32`** 改成 **`void`** 就可以
+```java
+String Type = a.get(0).getChild().get(0).getContent();
+AstNode ident = a.get(1);
+if(Type.equals("int")){Type="i32";}
+else if(Type.equals("void")){Type="void";}
+ident.setReturnType(Type);
+```
+
+第一个问题，需要考虑一下。因为定义的参数，在函数体内部需要**首先把定义的参数储存起来**以便后续调用。所以，我们可以采用**预先入栈**的方法，即先把参数设置为 **`level=1`** 的层次（因为函数体定义一定都是在 **`level=0`** ），再在进入函数体内部的时候去把那些入栈的参数**分配空间**。其实书上/课上介绍的符号表构建就是这样的
+
+![](image/2.png)
+
+```java
+//FuncFParam
+    ident.setLevel(1);
+    ···
+    stack.add(ident);
+//Block
+if(level==1){
+    for(int j=stack.size()-1;j>=0;j--){
+        if(stack.get(j).getRegId().equals("")&&stack.get(j).getLevel()==1){//未分配地址且层级是1，即表示参数
+            output(tags()+"%v"+this.regId+" = alloca "+stack.get(j).getKey().getAddrType()+"\n");//开地址
+            stack.get(j).setRegId("%v"+this.regId);//回填栈内信息
+            output(tags()+"store "+stack.get(j).getKey().getAddrType()+" "+stack.get(j).getValue()+", "+stack.get(j).getKey().getAddrType()+" * "+stack.get(j).getRegId()+"\n");//把收到的参数数据填到地址内
+            this.regId++;
+        }//常数作为参数，getAddrType在这里都是i32
+    }
+}
+```
+
+
+#### 2.函数调用
+函数调用和函数定义的区别在于：函数定义使用的是 **`FuncFParams`** ，函数调用使用的是 **`FuncRParams`** ，两者用法基本相同，唯一区别是在调用前需要进行运算，以获取传入的值。
+
+函数调用写法和库函数写法差不多，需要注意的是根据**函数返回值**不同判断是否需要寄存器存储函数返回值。
+
+函数调用文法在UnaryExp中使用
+
+- UnaryExp → PrimaryExp | Ident `'('` [FuncRParams] `')'`
+
+和 **`printf()`** 一样，我们需要预先运行所有的调用的参数的 **`Exp()`** 语法树，然后再调用每一个语法树传递上来的寄存器编号。这一步可以由 **`FuncRParams()`** 完成
+
+```java
+public void FuncRParams(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    generate(a.get(0));
+    StringBuilder Value;
+    Value=new StringBuilder(a.get(0).getKey().getAddrType()+" "+a.get(0).getValue());
+    for(int i=2;i<a.size();i+=2){
+        generate(a.get(i));
+        Value.append(", ").append(a.get(i).getKey().getAddrType()).append(" ").append(a.get(i).getValue());
+    }
+    ast.setValue(Value.toString());//把每个参数合并成一个字符串向上传递
+}
+```
+最后在 **`UnaryExp`** 进行输出
+```java
+if(ident.getReturnType().equals("i32")){
+    if(a.get(2).getContent().equals(")")){ //int型无参函数
+        output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"()\n");
+        ast.setValue("%v"+this.regId);
+        this.regId++;
+    }
+    else{ //int型含参函数
+        generate(a.get(2));
+        output(tags()+"%v"+this.regId+" = call "+ident.getReturnType()+" @"+ident.getContent()+"("+a.get(2).getValue()+")\n");
+        ast.setValue("%v"+this.regId);
+        this.regId++;
+    }
+}
+else if(ident.getReturnType().equals("void")){
+    if(a.get(2).getContent().equals(")")){ //void型无参函数
+        output(tags()+"call "+ident.getReturnType()+" @"+ident.getContent()+"()\n");
+    }
+    else{ //void型含参函数
+        generate(a.get(2));
+        output(tags()+"call "+ident.getReturnType()+" @"+ident.getContent()+"("+a.get(2).getValue()+")\n");
+    }
+}
+```
+至此， **`Lab8`** 完成
+
+注：函数需要支持 **`函数内自调用`** ，上述写法不存在这个问题，所以没有特殊考虑。
+
+测试样例
+```c
+int func1() {
+    int a=func1();
+    return 555;
+}
+
+int func2(int a) {
+    return a*a;
+}
+
+void func3(int a) {
+    func3(a*a-a);
+}
+
+int main() {
+    int a,b;
+    a = func1();
+    b=func2(func1());
+    func3(func2(func2(2)));
+    return 0;
+}
+```
+
+```llvm
+define dso_local i32 @func1() {
+    %v1 = alloca i32
+    %v2 = call i32 @func1()
+    store i32 %v2, i32* %v1
+    ret i32 555
+}
+define dso_local i32 @func2(i32 %v3) {
+    %v4 = alloca i32
+    store i32 %v3, i32 * %v4
+    %v5 = load i32, i32* %v4
+    %v6 = load i32, i32* %v4
+    %v7 = mul i32 %v5, %v6
+    ret i32 %v7
+}
+define dso_local void @func3(i32 %v8) {
+    %v9 = alloca i32
+    store i32 %v8, i32 * %v9
+    %v10 = load i32, i32* %v9
+    %v11 = load i32, i32* %v9
+    %v12 = mul i32 %v10, %v11
+    %v13 = load i32, i32* %v9
+    %v14 = sub i32 %v12, %v13
+    call void @func3(i32 %v14)
+    ret void
+}
+define dso_local i32 @main() {
+    %v15 = alloca i32
+    %v16 = alloca i32
+    %v17 = load i32, i32* %v15
+    %v18 = call i32 @func1()
+    store i32 %v18, i32* %v15
+    %v19 = load i32, i32* %v16
+    %v20 = call i32 @func1()
+    %v21 = call i32 @func2(i32 %v20)
+    store i32 %v21, i32* %v16
+    %v22 = call i32 @func2(i32 2)
+    %v23 = call i32 @func2(i32 %v22)
+    call void @func3(i32 %v23)
+    ret i32 0
+}
+```
+
+### 8.条件语句（Lab4）
+#### 1.if语句与条件表达式
+**条件语句**考虑的只有这一行
+- `'if'` `'('` Cond `')'` Stmt [ `'else'` Stmt ]
+
+乍一看这十分简单，因为我们只需要新写一个 **`Cond`** 即可。仔细一看确实没什么，不过是多套几层 **`LOrExp`** / **`LAndExp`** 即可。但以普遍理性而论，这里确实暗藏玄只因。在 **`Cond`** 判断的时候，是否进行 **`短路求值`** 将直接影响程序的**正确性**。举个例子：
+
+```c
+int a=1;
+int func(){
+    a=2;return 1;
+}
+int main(){
+    if(1||func()){printf("%d",a);}
+    return 0;
+}
+```
+
+在做这部分的时候，以及在与同学讨论的过程中，大部分的同学普遍认为 **`短路求值`** 仅仅影响的是 **`竞速`** ，~~直到和助教吐槽过后助教才指出这其中的错误~~。例如上式，正常情况下直接运算 **`Cond`** 的时候，我们先运算1，**再运算 `func()`** ，然后把两个值进行与运算，算得1，运行printf()。然而，按照 **`短路求值`** ，我们运算1，然后发现后面是 **`或运算`** ，故 **直接跳到 `printf()`**，两者区别在于短路求值没有运行函数，从而**改变全局变量的值**。也就是说，我们需要首先重新**改写 `Cond`** ，使得其能够满足短路求值的要求。
+
+首先观察Cond的相关文法。
+- Cond → LOrExp
+- LOrExp → LAndExp | LOrExp '||' LAndExp
+- LAndExp → EqExp | LAndExp '&&' EqExp
+- EqExp → RelExp | EqExp ('==' | '!=') RelExp
+- RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+
+不难发现，**LOr和LAnd**涉及短路求值，**Eq和Rel**不涉及，柿子要挑软的捏，所以先考虑功能相同的 **`RelEqExp`**
+
+首先是**进制转换**。因为再加减乘除模的时候，两个 **`i32`** 的数运算完是 **`i32`** 类型的，但是再=在等于不等于/大于等于小于等于的时候，两个 **`i32`** 类型的数运算完是 **`i1`** 类型的，在进行诸如**10==10==10!=10<=10>=10**的连续运算时，我们需要统一输入和输出的类型。这里给出两种写法
+```llvm
+;把i32转换为i1
+%1 = trunc i32 257 to i1 
+;把i1转换为i32
+%2 = zext i1 %1 to i32
+``` 
