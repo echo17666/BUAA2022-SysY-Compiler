@@ -10,8 +10,6 @@ public class KeyValue{
     String intVal="";
     String [] d1Value = null;
     String [][] d2Value = null;
-
-
     public void setD1(int d1){
         this.d1=d1;
         if(d1==0){d1Value = new String[10000];}

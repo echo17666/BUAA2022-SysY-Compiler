@@ -1063,7 +1063,6 @@ public class Generator{
             a.get(max).setNoId(ast.getNoId());
             this.regId++;
             generate(a.get(max));//特殊
-
         }
 
     }

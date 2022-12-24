@@ -2,6 +2,7 @@
 <!-- TOC -->
 
 - [编译器设计文档](#编译器设计文档)
+  - [0.观前提示](#0观前提示)
   - [1.参考编译器介绍](#1参考编译器介绍)
   - [2.编译器总体设计](#2编译器总体设计)
     - [1.总体结构](#1总体结构)
@@ -41,10 +42,23 @@
       - [2.函数调用](#2函数调用)
     - [8.条件语句（Lab4）](#8条件语句lab4)
       - [1.if语句与条件表达式](#1if语句与条件表达式)
+      - [2.短路求值](#2短路求值)
+    - [9.循环（Lab6）](#9循环lab6)
+      - [1.while循环](#1while循环)
+      - [2.break和continue](#2break和continue)
+    - [10.数组（Lab7）](#10数组lab7)
+    - [11.函数2（Lab8-2）](#11函数2lab8-2)
+  - [7.测试样例](#7测试样例)
+  - [8.总结感想](#8总结感想)
 
 <!-- /TOC -->
-## 1.参考编译器介绍
 
+## 0.观前提示
+**不要抄袭！不要抄袭！不要抄袭！**
+
+编译的实验查重是很严格的。不论是往届代码还是本届代码，切记一定不要抄袭！否则被查出来会很难顶。
+## 1.参考编译器介绍
+由于选择了 **`Java`** 进行编译器的编写，那么设计的思维一定是面向对象的思维。由于一个好的架构能在迭代开发中减少很多不必要的重构，所以在设计之前我参考了 《**Head First 设计模式**》一书，作为整体设计架构的一个指导。同时，积极与助教沟通，尤其是参加过编译大赛的助教，他们在编译器架构方面的考虑也有独到的见解。
 ## 2.编译器总体设计
 ### 1.总体结构
 总体结构按照编译顺序，即**词法分析**、**语法分析**、**语义分析**、**代码生成**四个部分，每一个部分单独设置文件包，然后在入口程序分别执行，即四个部分采用**四遍**运行。然后每一个部分**接收上一个部分的输入**，然后**把输出传递给下一个部分**。这样的过程就形成了类似一个**单向链**，每一个部分都是一个**单独的模块**，这样就可以**方便的进行每一步单元测试**，且一个模块的重构不会影响其他模块。
@@ -1835,3 +1849,1180 @@ int main(){
 ;把i1转换为i32
 %2 = zext i1 %1 to i32
 ``` 
+
+这里我们采取的策略是，向上传值的时候统一采用 **`i32`** 的方式，即向外屏蔽了 **`i1`** 的存在。这样在 **`RelEqExp`** 的时候，我们就可以直接把 **`i1`** 转换为 **`i32`** ，然后再进行 **`AddExp`** 的运算，以此类推
+```java
+
+    output(tags()+"%v"+this.regId+" = icmp "+opt+" i32 "+left+", "+right+"\n");
+    this.regId++;
+    output(tags()+"%v"+this.regId+" = zext i1 %v"+(this.regId-1)+" to i32\n");
+    a.get(i+1).setRegId("%v"+this.regId);
+    a.get(i+1).setValue("%v"+this.regId);
+    this.regId++;
+```
+这样我们就完成了 **`RelExp`** 和 **`EqExp`** 的写法。
+
+#### 2.短路求值
+正如前面所说，短路求值会影响程序运行的正确性。所以我们需要首先仔细思考，如何进行短路求值的编写。由于 **`Cond`** 直接推导是推导到 **`LOrExp`**，**`LOrExp`** 的下一级推导式是 **`LAndExp`**，所以我们要对这两个部分进行思考。
+
+不难发现，对于LOrExp，每一个表达式通过 **||**，连接。不难发现，如果在连接的表达式中有一个是0，那么整个表达式的值就是0，即**不需要对后面的表达式进行判断**。由于条件判断表达式是通过**label**进行跳转，所以这里给出一种做法：
+
+对于 **- `'if'` `'('` Cond `')'` Stmt [ `'else'` Stmt ]** 不难发现，Cond值为1的时候进**第一个Stmt**的基本块，否则进**第二个Stmt**的基本块。在进行完之后，会进到**这条语句之后的基本块**。
+对于 **- `'if'` `'('` Cond `')'` Stmt** 不难发现，Cond值为1的时候进**第一个Stmt**的基本块，否则进**这条语句之后的基本块**。
+
+所以，最简便也是最直接的方法，就是在 **`Astnode`** 中添加三个值
+```java
+    int StmtId=0;
+    int YesId=0;
+    int NoId=0;
+```
+其中，YesId和NoId分别表示**第一个Stmt**和**第二个Stmt**的基本块的id，StmtId表示**这条语句之后的基本块**的id。在进行短路求值的时候，我们就可以通过这三个值进行跳转。对于没有else的判断语句，方便起见，我们将**NoId**设置为**StmtId**。
+
+那么，在 **`LOrExp`** 的时候，我们可以判断每一个 **`LOrExp`**，如果等于1，继续判断下一个 **`LorExp`**，否则直接跳转到**NoId**的基本块。这时候，前面设计的语法树的优势就显现出来了。在传统的写法内，我们需要一层一层递归地判断，即在- **LOrExp → LOrExp '||' LAndExp** 内，不停进行左子树的函数自递归。这种做法的坏处就是，**继承属性（YesId/NoId/StmtId）**和**综合属性（1或0的值）**的传递会非常频繁，看起来比较麻烦。好在我们设计的语法树是下面这个样子的：
+```
+                                 <Cond>
+    ┌─────┬──────┬─────┬──────┬─────┼──────┬─────┬──────┬─────┬──────┐
+<LOrExp> ||  <LOrExp> ||  <LOrExp> ||  <LOrExp> ||  <LOrExp> ||  <LAndExp>
+      
+```
+也就是说，我们可以非常轻松地获取 **`Cond`** 下有多少个表达式，并在一个函数内采用**一层循环判断**即可。
+```java
+public void LOrExp(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    for(int i=0;i<a.size()-2;i+=2){//大于两个，进行Or判断
+        if(a.get(i).getChild().get(0).getChild().size()==1){
+            generate(a.get(i).getChild().get(0));//获取LOrExp的值
+            output(tags()+"%v"+this.regId+" = icmp ne i32 0, "+a.get(i).getChild().get(0).getValue()+"\n");//判断是否为0，
+            output(tags()+"br i1 %v"+this.regId+", label %v"+ast.getYesId()+", label %v"+(this.regId+1)+"\n");//是则跳转到YesId
+            this.regId+=2;
+            output("\nv"+(this.regId-1)+":\n");
+        }
+        else{
+            a.get(i).setYesId(ast.getYesId());
+            a.get(i).setStmtId(ast.getStmtId());
+            a.get(i).setNoId(this.regId);
+            this.regId++;
+            generate(a.get(i));//特殊
+            output("\nv"+a.get(i).getNoId()+":\n");//否则跳转到NoId
+        }
+    }
+    int max=a.size()-1;
+    if(a.get(max).getChild().size()==1){.../*同上*/}
+    else{.../*同上*/}
+}
+```
+
+对于其下一层的 **LAndExp**，情况又有不同。如果互相与的表达式中有0，那么就直接跳转到**NoId**的基本块。否则，继续判断下一个 **LAndExp**，如果所有LAndExp都等于1，那么就传递继承属性，回到上层的 **`LOrExp`**。
+```java
+public void LAndExp(AstNode ast){
+    ArrayList<AstNode> a=ast.getChild();
+    if(a.size()==1){
+        generate(a.get(0));
+        ast.setValue(a.get(0).getValue());
+    }
+    else{
+        for(int i=0;i<a.size()-2;i+=2){
+            generate(a.get(i));//LAndExp
+            output(tags()+"%v"+this.regId+" = icmp ne i32 0, "+a.get(i).getValue()+"\n");//判断是否为0
+            output(tags()+"br i1 %v"+this.regId+", label %v"+(this.regId+1)+", label %v"+ast.getNoId()+"\n");//是则跳转到NoId
+            this.regId+=2;
+            output("\nv"+(this.regId-1)+":\n");
+        }
+        int max=a.size()-1;
+        generate(a.get(max));
+        if(a.size()==1){.../*同上*/}
+        .../*同上*/
+    }
+}
+```
+这样操作的好处在于，我们每个Cond只需要进行两层判断，同时不会存在多余的基本块，也不会出现多余的跳转指令。
+
+那么最后，在Stmt中，设置三个Id
+```java
+else if(a.get(0).getContent().equals("if")){
+    output(tags()+"br label %v"+this.regId+"\n");
+    output("\nv"+this.regId+":\n");
+    a.get(2).setYesId(this.regId+1);
+    int YesId = this.regId+1;
+    int NoId=0;
+    int StmtId;
+    if(a.size()>5){//有else
+        a.get(2).setNoId(this.regId+2);
+        a.get(2).setStmtId(this.regId+3);
+        a.get(4).setStmtId(this.regId+3);
+        a.get(4).setContinueId(ast.getContinueId());
+        a.get(4).setBreakId(ast.getBreakId());
+        a.get(6).setStmtId(this.regId+3);
+        a.get(6).setContinueId(ast.getContinueId());
+        a.get(6).setBreakId(ast.getBreakId());
+        NoId = this.regId+2;
+        StmtId = this.regId+3;
+        this.regId+=4;
+    }
+    else{//无else
+        a.get(2).setNoId(this.regId+2);
+        a.get(2).setStmtId(this.regId+2);
+        a.get(4).setStmtId(this.regId+2);
+        a.get(4).setContinueId(ast.getContinueId());
+        a.get(4).setBreakId(ast.getBreakId());
+        StmtId = this.regId+2;
+        this.regId+=3;
+    }
+    generate(a.get(2));//进行Cond输出，即短路求值
+    output("\nv"+YesId+":\n");
+    generate(a.get(4));//第一个Stmt的内容
+    if(a.size()>5){
+        output("\nv"+NoId+":\n");//第二个Stmt的内容
+        generate(a.get(6));
+    }
+    output("\nv"+StmtId+":\n");//下一个基本块的开头标号
+}
+```
+这里其实有点投机取巧的意思，因为我们的基本块的标号是在进入基本块前就设置好了的，也就是没有严格按照顺序。这也得益于LLVM在编译时，由于我们的寄存器标号前面带有字母，导致其自动帮我们重新标号了。正常情况下，应当设置一个**栈**，然后采用**回填技术**，将基本块的标号填入。
+
+测试样例：
+```c
+int a=1;
+int func(){
+    a=2;return 1;
+}
+
+int func2(){
+    a=4;return 10;
+}
+int func3(){
+    a=3;return 0;
+}
+int main(){
+    if(0||func()&&func3()||func2()){printf("%d--1",a);}
+    if(1||func3()){printf("%d--2",a);}
+    if(0||func3()||func()<func2()){printf("%d--3",a);}
+    return 0;
+}
+```
+
+```llvm
+declare i32 @getint()
+declare void @putint(i32)
+declare void @putch(i32)
+declare void @putstr(i8*)
+@a = dso_local global i32 1
+define dso_local i32 @func() {
+    %v1 = load i32, i32* @a
+    store i32 2, i32* @a
+    ret i32 1
+}
+define dso_local i32 @func2() {
+    %v2 = load i32, i32* @a
+    store i32 4, i32* @a
+    ret i32 10
+}
+define dso_local i32 @func3() {
+    %v3 = load i32, i32* @a
+    store i32 3, i32* @a
+    ret i32 0
+}
+
+define dso_local i32 @main() {
+    br label %v4
+
+v4:
+    %v7 = icmp ne i32 0, 0
+    br i1 %v7, label %v5, label %v8
+
+v8:
+    %v11 = call i32 @func()
+    %v12 = icmp ne i32 0, %v11
+    br i1 %v12, label %v13, label %v9
+
+v13:
+    %v14 = call i32 @func3()
+    %v15 = icmp ne i32 0, %v14
+    br i1 %v15, label %v5, label %v9
+
+v9:
+    %v16 = call i32 @func2()
+    %v17 = icmp ne i32 0, %v16
+    br i1 %v17, label %v5, label %v6
+
+v5:
+    %v19 = load i32, i32* @a
+    call void @putint(i32 %v19)
+    call void @putch(i32 45)
+    call void @putch(i32 45)
+    call void @putch(i32 49)
+    br label %v6
+
+v6:
+    br label %v20
+
+v20:
+    %v23 = icmp ne i32 0, 1
+    br i1 %v23, label %v21, label %v24
+
+v24:
+    %v25 = call i32 @func3()
+    %v26 = icmp ne i32 0, %v25
+    br i1 %v26, label %v21, label %v22
+
+v21:
+    %v28 = load i32, i32* @a
+    call void @putint(i32 %v28)
+    call void @putch(i32 45)
+    call void @putch(i32 45)
+    call void @putch(i32 50)
+    br label %v22
+
+v22:
+    br label %v29
+
+v29:
+    %v32 = icmp ne i32 0, 0
+    br i1 %v32, label %v30, label %v33
+
+v33:
+    %v34 = call i32 @func3()
+    %v35 = icmp ne i32 0, %v34
+    br i1 %v35, label %v30, label %v36
+
+v36:
+    %v37 = call i32 @func()
+    %v38 = call i32 @func2()
+    %v39 = icmp slt i32 %v37, %v38
+    %v40 = zext i1 %v39 to i32
+    %v41 = icmp ne i32 0, %v40
+    br i1 %v41, label %v30, label %v31
+
+v30:
+    %v43 = load i32, i32* @a
+    call void @putint(i32 %v43)
+    call void @putch(i32 45)
+    call void @putch(i32 45)
+    call void @putch(i32 51)
+    br label %v31
+
+v31:
+    ret i32 0
+}
+```
+### 9.循环（Lab6）
+#### 1.while循环
+文法：**`'while'` `'('` Cond `')'` Stmt**
+
+这个和之前的 **`'if'` `'('` Cond `')'` Stmt**一摸一样，即Cond=1，进入YesId，否则进入StmtId，这里不过多赘述。
+
+```java
+else if(a.get(0).getContent().equals("while")){
+    output(tags()+"br label %v"+this.regId+"\n");
+    output("\nv"+this.regId+":\n");
+    int YesId = this.regId+1;
+    int StmtId=this.regId+2;
+    a.get(2).setYesId(this.regId+1);
+    a.get(2).setNoId(this.regId+2);
+    a.get(2).setStmtId(this.regId+2);
+    a.get(4).setStmtId(this.regId);
+    a.get(4).setBreakId(this.regId+2);
+    a.get(4).setContinueId(this.regId);
+    this.regId+=3;
+    generate(a.get(2));
+    output("\nv"+YesId+":\n");
+    generate(a.get(4));
+    output("\nv"+StmtId+":\n");
+}
+```
+
+#### 2.break和continue
+**break**所做的就是在while循环体中跳出循环，**continue**则是跳过本次循环，直接进入下一次循环。
+这个和**if/else**的区别在于，如果break，那么直接跳到StmtId，但是如果是continue，则需要**回到Cond**，重新进行判断。所以我们不妨设置
+```java
+int BreakId=0;
+int ContinueId=0;
+```
+然后再在Stmt中设置
+```java
+else if(a.get(0).getContent().equals("while")){
+    output(tags()+"br label %v"+this.regId+"\n");
+    output("\nv"+this.regId+":\n");
+    int YesId = this.regId+1;
+    int StmtId=this.regId+2;
+    a.get(2).setYesId(this.regId+1);
+    a.get(2).setNoId(this.regId+2);
+    a.get(2).setStmtId(this.regId+2);
+    a.get(4).setStmtId(this.regId);
+    a.get(4).setBreakId(this.regId+2);//StmtId
+    a.get(4).setContinueId(this.regId);//Cond的Id
+    this.regId+=3;
+    generate(a.get(2));
+    output("\nv"+YesId+":\n");
+    generate(a.get(4));
+    output("\nv"+StmtId+":\n");
+}
+else if(a.get(0).getContent().equals("break")){ast.setStmtId(ast.getBreakId());}
+else if(a.get(0).getContent().equals("continue")){ast.setStmtId(ast.getContinueId());}
+```
+
+### 10.数组（Lab7）
+这部分应该是最难的了，这部分我们不考虑**函数的数组传参**。首先我们和常数一样，考虑数组的初始化和赋值。由于数组和常数一样，定义的时候就已经知道了分配空间的大小，所以我们需要对其事先**分配空间**。建立一个新的类，用来存放以下信息：
+```java
+int dim=0;//维度
+int d1=0;//第一维
+int d2=0;//第二维
+String AddrType="i32";//地址类型
+String intVal="";//0维常数初始值
+String [] d1Value = null;//1维数组初始值
+String [][] d2Value = null;//2维数组初始值
+```
+然后再定义空间开辟的函数
+```java
+ public void setD1(int d1){
+    this.d1=d1;
+    if(d1==0){d1Value = new String[10000];}//函数传参的时候，d1=0
+    else{d1Value = new String[d1];}
+}
+
+public void setD2(int d2){
+    this.d2=d2;
+    if(this.d1==0){d2Value = new String[10000][d2];}//函数传参的时候，d1=0
+    else{d2Value = new String[this.d1][d2];}
+}
+```
+数组这方面，确实没有什么技巧，个人是将每一种情况都讨论了一遍。
+
+首先是**全局数组**，和全局常数一样，我们必须给出计算之后的值，同时要对数组置0。这里给出二维数组的 **`VarDef`**写法：
+```java
+else if(a.size()==7||a.size()==9){//二维数组，有初始值和没初始值情况
+    int l=this.level;
+    this.level=0;//由于不论全局与否，维度一定是以值得方式传递的，所以我们可以将level置0
+    generate(a.get(2));//计算第一维度的值
+    generate(a.get(5));//计算第二维度的值
+    this.level=l;//恢复level
+    if(level!=0){
+        output(tags()+"%v"+this.regId+" = alloca ["+a.get(2).getValue()+" x [ "+a.get(5).getValue() +" x i32]]\n");//如果不是全局数组，那么分配空间
+        ident.setValue("%v"+this.regId);
+        ident.setRegId("%v"+this.regId);
+        this.regId++;
+    }
+    k.setDim(2);//设置维度
+    k.setD1(Integer.parseInt(a.get(2).getValue()));//设置第一个维度
+    k.setD2(Integer.parseInt(a.get(5).getValue()));//设置第二个维度并创建模板
+    String [][]d2v = k.getD2Value();//获取二维数组模板
+    if(a.size()==9){//如果有初始值，那么就填入模板
+        a.get(8).setKey(k);
+        generate(a.get(8));
+    }
+    else if(a.size()==7){//若没初始值
+        for(int i=0;i<k.getD1();i++){
+            for(int j=0;j<k.getD2();j++){
+                if(level==0){
+                    d2v[i][j]="0";//全局数组置0
+                }
+                else{
+                    d2v[i][j]="NuLL";//局部数组置NULL
+                }
+            }
+        }
+        k.setD2Value(d2v);
+    }
+    if(level==0){//全局数组
+        if(a.size()==9){//有初始值
+            output("@"+ident.getContent()+" = dso_local global ["+k.getD1()+" x ["+k.getD2()+" x i32]] [[");//全局数组写法
+            d2v=k.getD2Value();
+            for(int i=0;i<k.getD1()-1;i++){
+                output(k.getD2()+" x i32] [");//每一个个值直接写入
+                for(int j=0;j<k.getD2()-1;j++){
+                    output("i32 "+d2v[i][j]+", ");
+                }
+                output("i32 "+k.getD2Value()[i][k.getD2()-1]+"], [");
+            }
+            output(k.getD2()+" x i32] [");
+            for(int j=0;j<k.getD2()-1;j++){
+                output("i32 "+d2v[k.getD1()-1][j]+", ");
+            }
+            output("i32 "+k.getD2Value()[k.getD1()-1][k.getD2()-1]+"]]\n");
+        }
+        else{//没初始值
+            output("@"+ident.getContent()+" = dso_local global ["+k.getD1()+" x ["+k.getD2()+" x i32]] zeroinitializer\n");//用zeroinitializer初始化，如果用0替代会TLE
+        }
+    }
+    else{//局部数组
+        d2v = k.getD2Value();
+        for(int i=0;i<k.getD1();i++){
+            for(int j=0;j<k.getD2();j++){
+                if(!(d2v[i][j].equals("NuLL"))){
+                    output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]*"+ident.getRegId()+", i32 0, i32 "+i+", i32 "+j+"\n");//取地址
+                    output(tags()+"store i32 "+d2v[i][j]+", i32* %v"+this.regId+"\n");//存值
+                    this.regId++;
+                }
+            }
+        }
+    }
+}
+```
+而数组的调用则只出现在 **`LVal`**内。这里给出二位函数的调用方法：
+```java
+else if(a.size()==7){
+    generate(a.get(2));
+    generate(a.get(5));
+    if(k.getD1()!=0){//int a[2][3]{func(a[1][2])}
+        output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]*"+stack.get(i).getRegId()+", i32 0, i32 "+a.get(2).getValue()+", i32 "+a.get(5).getValue()+"\n");//取地址
+        output(tags()+"%v"+(this.regId+1)+" = load i32, i32* %v"+this.regId+"\n");//取值
+        k.setAddrType("i32");//地址类型传递
+        ast.setValue("%v"+(this.regId+1));//值传递
+        ast.setRegId("%v"+(this.regId));//地址传递
+        this.regId+=2;
+    }
+    else{//func(int b,int a[][3]){func(a[2][2],xxx)},即函数调用
+    }
+}
+```
+
+### 11.函数2（Lab8-2）
+这部分主要涉及函数传参，由于其复杂性，导致我无法获取其中的共性，故采用的是最简单粗暴的方法，即**枚举**。因为，例如一个二维数组，传递参数的时候，可以将其转为1维，0维，二维。而每一种写法都不一样，函数内的写法与main的写法也不一样，因为**函数传参的数组，第一个维度是0**，这就导致无法复用。因此，我采用了枚举的方法，将所有可能的情况都写出来，这样就可以保证正确性，但是代码量大大增加，且不易维护。（只能祈祷期末不出三维数组）
+
+例如，函数内使用二维数组的时候，会出现**func(int b,int a[][3]){func(a[2][2],xxx)}**，而函数内使用二维数组和main里面的使用是不一样的。
+```java
+else{//func(int b,int a[][3]){func(a[2][2],xxx)}
+    output(tags()+"%v"+this.regId+" = load ["+k.getD2()+" x i32] *, ["+k.getD2()+" x i32]* * "+stack.get(i).getRegId()+"\n");
+    this.regId++;
+    output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 "+a.get(2).getValue()+"\n");
+    this.regId++;
+    output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD2()+" x i32], ["+k.getD2()+" x i32]* %v"+(this.regId-1)+", i32 0, i32 "+a.get(5).getValue()+"\n");
+    output(tags()+"%v"+(this.regId+1)+" = load i32, i32 *%v"+(this.regId)+"\n");
+    k.setAddrType("i32");
+    ast.setValue("%v"+(this.regId+1));
+    ast.setRegId("%v"+(this.regId));
+    this.regId+=2;
+}
+```
+甚至全局数组的写法都是不一样的
+```java
+else if(a.size()==7){
+    generate(a.get(2));
+    generate(a.get(5));
+    output(tags()+"%v"+this.regId+" = getelementptr ["+k.getD1()+" x ["+k.getD2()+" x i32]], ["+k.getD1()+" x ["+k.getD2()+" x i32]]* @"+identName+", i32 0, i32 "+a.get(2).getValue()+", i32 "+a.get(5).getValue()+"\n");
+    output(tags()+"%v"+(this.regId+1)+" = load i32, i32* %v"+this.regId+"\n");
+    k.setAddrType("i32");
+    ast.setValue("%v"+(this.regId+1));
+    ast.setRegId("%v"+(this.regId));
+    this.regId+=2;
+}
+```
+所以这部分写的其实并不好，可以肯定的是一定有更好的方法。
+
+至此，整个编译器编写完成。
+
+## 7.测试样例
+测试样例：2022年A类样例，testfile24：
+```c
+int s1_1[3][5]={{25*4,200,300,400,500},{111,222,333,444,555},{99,102,0,123,145}};
+int s2_1[3][5]={{100,200,300,400,500},{111,222,333,444,555},{99,102,0,123,145}};
+int add[3]={123,666,456},s_2[3]={s1_1[0][0]-100,0,0};
+int s_3[3]={0,0,0};
+const int a1=1,a2=2,a3=3;
+const int month[9]={1,2,3,4,5,6,7,8,9};
+const int year_1=4,year_2=year_1*25;
+void get_average(int a[][5]){
+    int s=0,i=2;
+    while(i>=0){
+        s=a[i][0]+a[i][1]+a[i][2]+a[i][3]+a[i][4];
+        s=s/5;
+        s_2[i]=s;
+        i=i-1;
+        //aaaa
+    }
+    return;
+}
+void blank(int a,int b,int c){}
+void blank2(int a,int b[],int C23[]){;}
+int add_1(int a,int s[]){
+    int i_1=2,sum=0;
+    while(i_1>=0){
+        sum=sum+s[i_1];
+        i_1=i_1-1;
+    }
+    a=a-3;
+    sum=sum/a;
+    a=a+4;
+    sum=sum*a;
+    sum=sum-a;
+    a=a+6;
+    sum=sum%a;
+    return sum;
+}
+int checkyear(int year){
+    if(year>=0){
+    if(year!=+2022||year<=2021){
+        if((year%(-year_1*-year_2))==0||(year%year_1)==0&&(year%year_2)!=0){
+            printf("run:%d\n",year);
+        }
+        else{
+            printf("not run:%d\n",year);
+        }
+    }
+    else{
+        printf("2022!!!\n");
+    }
+    }
+    return year;
+}
+void printsth(){
+    printf("printsth\n");
+    return;
+}/*
+int getint(){
+    int n;
+    scanf("%d",&n);
+    return n;
+}*/
+int main(){{
+    int j=0,k=3,i=3;
+    int in_put;
+    int x,y,z;
+    int x_1;
+    int y_1,z_1;
+    int aaa,bbb,ccc,ddd,eee,fff;
+    in_put=getint();
+    x=getint();
+    y=getint();
+    z=getint();
+    x_1=getint();
+    y_1=getint();
+    z_1=getint();
+    printf("20373614\n");
+    get_average(s1_1);
+    while(i>0){
+        if(s_2[i-1]==300){
+            i=i-1;
+            continue;
+            }
+        else{
+            if(1&&!(s_2[i-1]-300)&&s_2[i-1]<100){
+                printf("LOW:%d\n",s_2[i-1]);
+            }
+            if(1&&0>1){
+                if(s_2[i-1]==300||s_2[i-1]>332){
+                    printf("HIGH:%d\n",s_2[i-1]);
+                    break;
+                }
+            }
+            i=i-1;
+        }
+    }
+    j=add_1(5,add);
+    printf("add:%d\n",j);
+    k=add_1(in_put,add);
+    printf("input:%d\n",k);
+    aaa=checkyear(x);
+    bbb=checkyear(y);
+    ccc=checkyear(z);
+    ddd=checkyear(x_1);
+    eee=checkyear(y_1);
+    fff=checkyear(z_1);
+    blank2(j,add,s1_1[0]);
+    printf("year1:%d,year2:%d,year3:%d,year4:%d,year5:%d,year6:%d\n",aaa,bbb,ccc,ddd,eee,fff);
+}
+printsth();
+return 0;
+}
+```
+
+```llvm
+declare i32 @getint()
+declare void @putint(i32)
+declare void @putch(i32)
+declare void @putstr(i8*)
+@s1_1 = dso_local global [3 x [5 x i32]] [[5 x i32] [i32 100, i32 200, i32 300, i32 400, i32 500], [5 x i32] [i32 111, i32 222, i32 333, i32 444, i32 555], [5 x i32] [i32 99, i32 102, i32 0, i32 123, i32 145]]
+@s2_1 = dso_local global [3 x [5 x i32]] [[5 x i32] [i32 100, i32 200, i32 300, i32 400, i32 500], [5 x i32] [i32 111, i32 222, i32 333, i32 444, i32 555], [5 x i32] [i32 99, i32 102, i32 0, i32 123, i32 145]]
+@add = dso_local global [3 x i32] [i32 123, i32 666, i32 456]
+@s_2 = dso_local global [3 x i32] [i32 0, i32 0, i32 0]
+@s_3 = dso_local global [3 x i32] [i32 0, i32 0, i32 0]
+@a1 = dso_local global i32 1
+@a2 = dso_local global i32 2
+@a3 = dso_local global i32 3
+@month = dso_local constant [9 x i32] [i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9]
+@year_1 = dso_local global i32 4
+@year_2 = dso_local global i32 100
+define dso_local void @get_average([5 x i32] *%v1) {
+    %v2 = alloca [5 x i32]*
+    store [5 x i32]* %v1, [5 x i32]* * %v2
+    %v3 = alloca i32
+    store i32 0, i32* %v3
+    %v4 = alloca i32
+    store i32 2, i32* %v4
+    br label %v5
+
+v5:
+    %v8 = load i32, i32* %v4
+    %v9 = icmp sge i32 %v8, 0
+    %v10 = zext i1 %v9 to i32
+    %v11 = icmp ne i32 0, %v10
+    br i1 %v11, label %v6, label %v7
+
+v6:
+    %v13 = load i32, i32* %v3
+    %v14 = load i32, i32* %v4
+    %v15 = load [5 x i32] *, [5 x i32]* * %v2
+    %v16 = getelementptr [5 x i32], [5 x i32]* %v15, i32 %v14
+    %v17 = getelementptr [5 x i32], [5 x i32]* %v16, i32 0, i32 0
+    %v18 = load i32, i32 *%v17
+    %v19 = load i32, i32* %v4
+    %v20 = load [5 x i32] *, [5 x i32]* * %v2
+    %v21 = getelementptr [5 x i32], [5 x i32]* %v20, i32 %v19
+    %v22 = getelementptr [5 x i32], [5 x i32]* %v21, i32 0, i32 1
+    %v23 = load i32, i32 *%v22
+    %v24 = add i32 %v18, %v23
+    %v25 = load i32, i32* %v4
+    %v26 = load [5 x i32] *, [5 x i32]* * %v2
+    %v27 = getelementptr [5 x i32], [5 x i32]* %v26, i32 %v25
+    %v28 = getelementptr [5 x i32], [5 x i32]* %v27, i32 0, i32 2
+    %v29 = load i32, i32 *%v28
+    %v30 = add i32 %v24, %v29
+    %v31 = load i32, i32* %v4
+    %v32 = load [5 x i32] *, [5 x i32]* * %v2
+    %v33 = getelementptr [5 x i32], [5 x i32]* %v32, i32 %v31
+    %v34 = getelementptr [5 x i32], [5 x i32]* %v33, i32 0, i32 3
+    %v35 = load i32, i32 *%v34
+    %v36 = add i32 %v30, %v35
+    %v37 = load i32, i32* %v4
+    %v38 = load [5 x i32] *, [5 x i32]* * %v2
+    %v39 = getelementptr [5 x i32], [5 x i32]* %v38, i32 %v37
+    %v40 = getelementptr [5 x i32], [5 x i32]* %v39, i32 0, i32 4
+    %v41 = load i32, i32 *%v40
+    %v42 = add i32 %v36, %v41
+    store i32 %v42, i32* %v3
+    %v43 = load i32, i32* %v3
+    %v44 = load i32, i32* %v3
+    %v45 = sdiv i32 %v44, 5
+    store i32 %v45, i32* %v3
+    %v46 = load i32, i32* %v4
+    %v47 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v46
+    %v48 = load i32, i32* %v47
+    %v49 = load i32, i32* %v3
+    store i32 %v49, i32* %v47
+    %v50 = load i32, i32* %v4
+    %v51 = load i32, i32* %v4
+    %v52 = sub i32 %v51, 1
+    store i32 %v52, i32* %v4
+    br label %v5
+
+v7:
+    ret void
+    ret void
+}
+define dso_local void @blank(i32 %v53, i32 %v54, i32 %v55) {
+    %v56 = alloca i32
+    store i32 %v55, i32 * %v56
+    %v57 = alloca i32
+    store i32 %v54, i32 * %v57
+    %v58 = alloca i32
+    store i32 %v53, i32 * %v58
+    ret void
+}
+define dso_local void @blank2(i32 %v59, i32* %v60, i32* %v61) {
+    %v62 = alloca i32*
+    store i32* %v61, i32* * %v62
+    %v63 = alloca i32*
+    store i32* %v60, i32* * %v63
+    %v64 = alloca i32
+    store i32 %v59, i32 * %v64
+    ret void
+}
+define dso_local i32 @add_1(i32 %v65, i32* %v66) {
+    %v67 = alloca i32*
+    store i32* %v66, i32* * %v67
+    %v68 = alloca i32
+    store i32 %v65, i32 * %v68
+    %v69 = alloca i32
+    store i32 2, i32* %v69
+    %v70 = alloca i32
+    store i32 0, i32* %v70
+    br label %v71
+
+v71:
+    %v74 = load i32, i32* %v69
+    %v75 = icmp sge i32 %v74, 0
+    %v76 = zext i1 %v75 to i32
+    %v77 = icmp ne i32 0, %v76
+    br i1 %v77, label %v72, label %v73
+
+v72:
+    %v79 = load i32, i32* %v70
+    %v80 = load i32, i32* %v70
+    %v81 = load i32, i32* %v69
+    %v82 = load i32*, i32* * %v67
+    %v83 = getelementptr i32, i32* %v82, i32 %v81
+    %v84 = load i32, i32* %v83
+    %v85 = add i32 %v80, %v84
+    store i32 %v85, i32* %v70
+    %v86 = load i32, i32* %v69
+    %v87 = load i32, i32* %v69
+    %v88 = sub i32 %v87, 1
+    store i32 %v88, i32* %v69
+    br label %v71
+
+v73:
+    %v89 = load i32, i32* %v68
+    %v90 = load i32, i32* %v68
+    %v91 = sub i32 %v90, 3
+    store i32 %v91, i32* %v68
+    %v92 = load i32, i32* %v70
+    %v93 = load i32, i32* %v70
+    %v94 = load i32, i32* %v68
+    %v95 = sdiv i32 %v93, %v94
+    store i32 %v95, i32* %v70
+    %v96 = load i32, i32* %v68
+    %v97 = load i32, i32* %v68
+    %v98 = add i32 %v97, 4
+    store i32 %v98, i32* %v68
+    %v99 = load i32, i32* %v70
+    %v100 = load i32, i32* %v70
+    %v101 = load i32, i32* %v68
+    %v102 = mul i32 %v100, %v101
+    store i32 %v102, i32* %v70
+    %v103 = load i32, i32* %v70
+    %v104 = load i32, i32* %v70
+    %v105 = load i32, i32* %v68
+    %v106 = sub i32 %v104, %v105
+    store i32 %v106, i32* %v70
+    %v107 = load i32, i32* %v68
+    %v108 = load i32, i32* %v68
+    %v109 = add i32 %v108, 6
+    store i32 %v109, i32* %v68
+    %v110 = load i32, i32* %v70
+    %v111 = load i32, i32* %v70
+    %v112 = load i32, i32* %v68
+    %v113 = srem i32 %v111, %v112
+    store i32 %v113, i32* %v70
+    %v114 = load i32, i32* %v70
+    ret i32 %v114
+}
+define dso_local i32 @checkyear(i32 %v115) {
+    %v116 = alloca i32
+    store i32 %v115, i32 * %v116
+    br label %v117
+
+v117:
+    %v120 = load i32, i32* %v116
+    %v121 = icmp sge i32 %v120, 0
+    %v122 = zext i1 %v121 to i32
+    %v123 = icmp ne i32 0, %v122
+    br i1 %v123, label %v118, label %v119
+
+v118:
+    br label %v125
+
+v125:
+    %v129 = load i32, i32* %v116
+    %v130 = icmp ne i32 %v129, 2022
+    %v131 = zext i1 %v130 to i32
+    %v132 = icmp ne i32 0, %v131
+    br i1 %v132, label %v126, label %v133
+
+v133:
+    %v134 = load i32, i32* %v116
+    %v135 = icmp sle i32 %v134, 2021
+    %v136 = zext i1 %v135 to i32
+    %v137 = icmp ne i32 0, %v136
+    br i1 %v137, label %v126, label %v127
+
+v126:
+    br label %v139
+
+v139:
+    %v143 = load i32, i32* %v116
+    %v144 = load i32, i32* @year_1
+    %v145 = sub i32 0, %v144
+    %v146 = load i32, i32* @year_2
+    %v147 = sub i32 0, %v146
+    %v148 = mul i32 %v145, %v147
+    %v149 = srem i32 %v143, %v148
+    %v150 = icmp eq i32 %v149, 0
+    %v151 = zext i1 %v150 to i32
+    %v152 = icmp ne i32 0, %v151
+    br i1 %v152, label %v140, label %v153
+
+v153:
+    %v155 = load i32, i32* %v116
+    %v156 = load i32, i32* @year_1
+    %v157 = srem i32 %v155, %v156
+    %v158 = icmp eq i32 %v157, 0
+    %v159 = zext i1 %v158 to i32
+    %v160 = icmp ne i32 0, %v159
+    br i1 %v160, label %v161, label %v141
+
+v161:
+    %v162 = load i32, i32* %v116
+    %v163 = load i32, i32* @year_2
+    %v164 = srem i32 %v162, %v163
+    %v165 = icmp ne i32 %v164, 0
+    %v166 = zext i1 %v165 to i32
+    %v167 = icmp ne i32 0, %v166
+    br i1 %v167, label %v140, label %v141
+
+v140:
+    %v169 = load i32, i32* %v116
+    call void @putch(i32 114)
+    call void @putch(i32 117)
+    call void @putch(i32 110)
+    call void @putch(i32 58)
+    call void @putint(i32 %v169)
+    call void @putch(i32 10)
+    br label %v142
+
+v141:
+    %v170 = load i32, i32* %v116
+    call void @putch(i32 110)
+    call void @putch(i32 111)
+    call void @putch(i32 116)
+    call void @putch(i32 32)
+    call void @putch(i32 114)
+    call void @putch(i32 117)
+    call void @putch(i32 110)
+    call void @putch(i32 58)
+    call void @putint(i32 %v170)
+    call void @putch(i32 10)
+    br label %v142
+
+v142:
+    br label %v128
+
+v127:
+    call void @putch(i32 50)
+    call void @putch(i32 48)
+    call void @putch(i32 50)
+    call void @putch(i32 50)
+    call void @putch(i32 33)
+    call void @putch(i32 33)
+    call void @putch(i32 33)
+    call void @putch(i32 10)
+    br label %v128
+
+v128:
+    br label %v119
+
+v119:
+    %v171 = load i32, i32* %v116
+    ret i32 %v171
+}
+define dso_local void @printsth() {
+    call void @putch(i32 112)
+    call void @putch(i32 114)
+    call void @putch(i32 105)
+    call void @putch(i32 110)
+    call void @putch(i32 116)
+    call void @putch(i32 115)
+    call void @putch(i32 116)
+    call void @putch(i32 104)
+    call void @putch(i32 10)
+    ret void
+    ret void
+}
+
+define dso_local i32 @main() {
+    %v172 = alloca i32
+    store i32 0, i32* %v172
+    %v173 = alloca i32
+    store i32 3, i32* %v173
+    %v174 = alloca i32
+    store i32 3, i32* %v174
+    %v175 = alloca i32
+    %v176 = alloca i32
+    %v177 = alloca i32
+    %v178 = alloca i32
+    %v179 = alloca i32
+    %v180 = alloca i32
+    %v181 = alloca i32
+    %v182 = alloca i32
+    %v183 = alloca i32
+    %v184 = alloca i32
+    %v185 = alloca i32
+    %v186 = alloca i32
+    %v187 = alloca i32
+    %v188 = load i32, i32* %v175
+    %v189 = call i32 @getint()
+    store i32 %v189, i32* %v175
+    %v190 = load i32, i32* %v176
+    %v191 = call i32 @getint()
+    store i32 %v191, i32* %v176
+    %v192 = load i32, i32* %v177
+    %v193 = call i32 @getint()
+    store i32 %v193, i32* %v177
+    %v194 = load i32, i32* %v178
+    %v195 = call i32 @getint()
+    store i32 %v195, i32* %v178
+    %v196 = load i32, i32* %v179
+    %v197 = call i32 @getint()
+    store i32 %v197, i32* %v179
+    %v198 = load i32, i32* %v180
+    %v199 = call i32 @getint()
+    store i32 %v199, i32* %v180
+    %v200 = load i32, i32* %v181
+    %v201 = call i32 @getint()
+    store i32 %v201, i32* %v181
+    call void @putch(i32 50)
+    call void @putch(i32 48)
+    call void @putch(i32 51)
+    call void @putch(i32 55)
+    call void @putch(i32 51)
+    call void @putch(i32 54)
+    call void @putch(i32 49)
+    call void @putch(i32 52)
+    call void @putch(i32 10)
+    %v202 = getelementptr [3 x [5 x i32]], [3 x [5 x i32]]* @s1_1, i32 0, i32 0
+    call void @get_average([5 x i32]* %v202)
+    br label %v203
+
+v203:
+    %v206 = load i32, i32* %v174
+    %v207 = icmp sgt i32 %v206, 0
+    %v208 = zext i1 %v207 to i32
+    %v209 = icmp ne i32 0, %v208
+    br i1 %v209, label %v204, label %v205
+
+v204:
+    br label %v211
+
+v211:
+    %v215 = load i32, i32* %v174
+    %v216 = sub i32 %v215, 1
+    %v217 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v216
+    %v218 = load i32, i32* %v217
+    %v219 = icmp eq i32 %v218, 300
+    %v220 = zext i1 %v219 to i32
+    %v221 = icmp ne i32 0, %v220
+    br i1 %v221, label %v212, label %v213
+
+v212:
+    %v223 = load i32, i32* %v174
+    %v224 = load i32, i32* %v174
+    %v225 = sub i32 %v224, 1
+    store i32 %v225, i32* %v174
+    br label %v203
+    br label %v214
+
+v213:
+    br label %v226
+
+v226:
+    %v230 = icmp ne i32 0, 1
+    br i1 %v230, label %v231, label %v228
+
+v231:
+    %v232 = load i32, i32* %v174
+    %v233 = sub i32 %v232, 1
+    %v234 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v233
+    %v235 = load i32, i32* %v234
+    %v236 = sub i32 %v235, 300
+    %v237 = icmp eq i32 0, %v236
+    %v238 = zext i1 %v237 to i32
+    %v239 = icmp ne i32 0, %v238
+    br i1 %v239, label %v240, label %v228
+
+v240:
+    %v241 = load i32, i32* %v174
+    %v242 = sub i32 %v241, 1
+    %v243 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v242
+    %v244 = load i32, i32* %v243
+    %v245 = icmp slt i32 %v244, 100
+    %v246 = zext i1 %v245 to i32
+    %v247 = icmp ne i32 0, %v246
+    br i1 %v247, label %v227, label %v228
+
+v227:
+    %v249 = load i32, i32* %v174
+    %v250 = sub i32 %v249, 1
+    %v251 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v250
+    %v252 = load i32, i32* %v251
+    call void @putch(i32 76)
+    call void @putch(i32 79)
+    call void @putch(i32 87)
+    call void @putch(i32 58)
+    call void @putint(i32 %v252)
+    call void @putch(i32 10)
+    br label %v228
+
+v228:
+    br label %v253
+
+v253:
+    %v257 = icmp ne i32 0, 1
+    br i1 %v257, label %v258, label %v255
+
+v258:
+    %v259 = icmp sgt i32 0, 1
+    %v260 = zext i1 %v259 to i32
+    %v261 = icmp ne i32 0, %v260
+    br i1 %v261, label %v254, label %v255
+
+v254:
+    br label %v263
+
+v263:
+    %v266 = load i32, i32* %v174
+    %v267 = sub i32 %v266, 1
+    %v268 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v267
+    %v269 = load i32, i32* %v268
+    %v270 = icmp eq i32 %v269, 300
+    %v271 = zext i1 %v270 to i32
+    %v272 = icmp ne i32 0, %v271
+    br i1 %v272, label %v264, label %v273
+
+v273:
+    %v274 = load i32, i32* %v174
+    %v275 = sub i32 %v274, 1
+    %v276 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v275
+    %v277 = load i32, i32* %v276
+    %v278 = icmp sgt i32 %v277, 332
+    %v279 = zext i1 %v278 to i32
+    %v280 = icmp ne i32 0, %v279
+    br i1 %v280, label %v264, label %v265
+
+v264:
+    %v282 = load i32, i32* %v174
+    %v283 = sub i32 %v282, 1
+    %v284 = getelementptr [3 x i32], [3 x i32]* @s_2, i32 0, i32 %v283
+    %v285 = load i32, i32* %v284
+    call void @putch(i32 72)
+    call void @putch(i32 73)
+    call void @putch(i32 71)
+    call void @putch(i32 72)
+    call void @putch(i32 58)
+    call void @putint(i32 %v285)
+    call void @putch(i32 10)
+    br label %v205
+    br label %v265
+
+v265:
+    br label %v255
+
+v255:
+    %v286 = load i32, i32* %v174
+    %v287 = load i32, i32* %v174
+    %v288 = sub i32 %v287, 1
+    store i32 %v288, i32* %v174
+    br label %v214
+
+v214:
+    br label %v203
+
+v205:
+    %v289 = load i32, i32* %v172
+    %v290 = getelementptr [3 x i32], [3 x i32]* @add, i32 0, i32 0
+    %v292 = call i32 @add_1(i32 5, i32* %v290)
+    store i32 %v292, i32* %v172
+    %v293 = load i32, i32* %v172
+    call void @putch(i32 97)
+    call void @putch(i32 100)
+    call void @putch(i32 100)
+    call void @putch(i32 58)
+    call void @putint(i32 %v293)
+    call void @putch(i32 10)
+    %v294 = load i32, i32* %v173
+    %v295 = load i32, i32* %v175
+    %v296 = getelementptr [3 x i32], [3 x i32]* @add, i32 0, i32 0
+    %v298 = call i32 @add_1(i32 %v295, i32* %v296)
+    store i32 %v298, i32* %v173
+    %v299 = load i32, i32* %v173
+    call void @putch(i32 105)
+    call void @putch(i32 110)
+    call void @putch(i32 112)
+    call void @putch(i32 117)
+    call void @putch(i32 116)
+    call void @putch(i32 58)
+    call void @putint(i32 %v299)
+    call void @putch(i32 10)
+    %v300 = load i32, i32* %v182
+    %v301 = load i32, i32* %v176
+    %v302 = call i32 @checkyear(i32 %v301)
+    store i32 %v302, i32* %v182
+    %v303 = load i32, i32* %v183
+    %v304 = load i32, i32* %v177
+    %v305 = call i32 @checkyear(i32 %v304)
+    store i32 %v305, i32* %v183
+    %v306 = load i32, i32* %v184
+    %v307 = load i32, i32* %v178
+    %v308 = call i32 @checkyear(i32 %v307)
+    store i32 %v308, i32* %v184
+    %v309 = load i32, i32* %v185
+    %v310 = load i32, i32* %v179
+    %v311 = call i32 @checkyear(i32 %v310)
+    store i32 %v311, i32* %v185
+    %v312 = load i32, i32* %v186
+    %v313 = load i32, i32* %v180
+    %v314 = call i32 @checkyear(i32 %v313)
+    store i32 %v314, i32* %v186
+    %v315 = load i32, i32* %v187
+    %v316 = load i32, i32* %v181
+    %v317 = call i32 @checkyear(i32 %v316)
+    store i32 %v317, i32* %v187
+    %v318 = load i32, i32* %v172
+    %v319 = getelementptr [3 x i32], [3 x i32]* @add, i32 0, i32 0
+    %v321 = mul i32 0, 5
+    %v322 = getelementptr [3 x [5 x i32]], [3 x [5 x i32]]* @s1_1, i32 0, i32 0
+    %v323 = getelementptr [5 x i32], [5 x i32]* %v322, i32 0, i32 %v321
+    call void @blank2(i32 %v318, i32* %v319, i32* %v323)
+    %v324 = load i32, i32* %v182
+    %v325 = load i32, i32* %v183
+    %v326 = load i32, i32* %v184
+    %v327 = load i32, i32* %v185
+    %v328 = load i32, i32* %v186
+    %v329 = load i32, i32* %v187
+    call void @putch(i32 121)
+    call void @putch(i32 101)
+    call void @putch(i32 97)
+    call void @putch(i32 114)
+    call void @putch(i32 49)
+    call void @putch(i32 58)
+    call void @putint(i32 %v324)
+    call void @putch(i32 44)
+    call void @putch(i32 121)
+    call void @putch(i32 101)
+    call void @putch(i32 97)
+    call void @putch(i32 114)
+    call void @putch(i32 50)
+    call void @putch(i32 58)
+    call void @putint(i32 %v325)
+    call void @putch(i32 44)
+    call void @putch(i32 121)
+    call void @putch(i32 101)
+    call void @putch(i32 97)
+    call void @putch(i32 114)
+    call void @putch(i32 51)
+    call void @putch(i32 58)
+    call void @putint(i32 %v326)
+    call void @putch(i32 44)
+    call void @putch(i32 121)
+    call void @putch(i32 101)
+    call void @putch(i32 97)
+    call void @putch(i32 114)
+    call void @putch(i32 52)
+    call void @putch(i32 58)
+    call void @putint(i32 %v327)
+    call void @putch(i32 44)
+    call void @putch(i32 121)
+    call void @putch(i32 101)
+    call void @putch(i32 97)
+    call void @putch(i32 114)
+    call void @putch(i32 53)
+    call void @putch(i32 58)
+    call void @putint(i32 %v328)
+    call void @putch(i32 44)
+    call void @putch(i32 121)
+    call void @putch(i32 101)
+    call void @putch(i32 97)
+    call void @putch(i32 114)
+    call void @putch(i32 54)
+    call void @putch(i32 58)
+    call void @putint(i32 %v329)
+    call void @putch(i32 10)
+    call void @printsth()
+    ret i32 0
+}
+
+```
+## 8.总结感想
+总的说来，本次编译实验难度适中，相比操作系统和计组，编译实验部分和理论部分的联系十分的密切，这也导致在进行编译实验的时候，对编译器的理解也会比较深刻。例如，语法分析的递归下降子程序，语义分析的栈式符号表，代码生成的基本块划分，其实都在书上有详尽的理论说明。这也是这次编译实验能够顺利进行的关键。
+
+同时，对于编译器的理解也是十分有帮助的，例如，编译器的前端部分，词法分析，语法分析，语义分析，中间代码生成，后端部分，代码优化，代码生成，这些都是编译器的基本组成部分，对于编译器的理解，这些部分都是十分重要的。在这次编译实验中，我也是通过这些部分的实现，对编译器的理解更加深刻了。
+
+最后，感谢老师和助教的辛勤付出，让本次编译实验能够如此顺利的进行。
