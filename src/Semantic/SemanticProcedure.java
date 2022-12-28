@@ -76,7 +76,7 @@ public class SemanticProcedure{
         int j=this.current;
         int check=0;
         for(;j<this.bank.size()&&check==0;j++){
-            if(check==0&&bank.get(j).getContent().equals("=")){return true;}
+            if(check==0&&bank.get(j).getContent().equals("=")&&bank.get(j).getLineNumber()==bank.get(this.current).getLineNumber()){return true;}
             if(bank.get(j).getContent().equals(";")){check=1;}
         }
         return false;
