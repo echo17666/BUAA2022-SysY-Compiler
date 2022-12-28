@@ -30,7 +30,6 @@ public class SyntaxProcedure2{
         ReservedCharacter.put("printf","PRINTFTK");
         ReservedCharacter.put("return","RETURNTK");
         ReservedCharacter.put("void","VOIDTK");
-        ReservedCharacter.put("bitand","BITANDTK");
         ReservedCharacter.put("!","NOT");
         ReservedCharacter.put("&&","AND");
         ReservedCharacter.put("||","OR");
@@ -169,13 +168,7 @@ public class SyntaxProcedure2{
                 if(sym.equals("]")){nextsym(a);}
                 else{}
             }
-            if(sym.equals("=")){nextsym(a);
-                if(sym.equals("getint")){nextsym(a);
-                    if(sym.equals("(")){nextsym(a);
-                        if(sym.equals(")")){nextsym(a);}
-                    }
-                }
-                else{InitVal(a);}}
+            if(sym.equals("=")){nextsym(a);InitVal(a);}
         }
         else{}
         ast.addNode(a);
@@ -433,14 +426,14 @@ public class SyntaxProcedure2{
     public void MulExp(AstNode ast){
         AstNode a =new AstNode("<MulExp>");
         if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){UnaryExp(a);
-            while(sym.equals("*")||sym.equals("/")||sym.equals("%")||sym.equals("bitand")){
+            while(sym.equals("*")||sym.equals("/")||sym.equals("%")){
                 AstNode tmp=a.changeNode();
                 AstNode b =new AstNode("<MulExp>");
                 b.addNode(tmp);
                 a.addNode(b);
                 output("<MulExp>");
                 nextsym(a);UnaryExp(a);
-                if(getbeforesym().equals("*")||getbeforesym().equals("/")||getbeforesym().equals("%")||getbeforesym().equals("bitand")){
+                if(getbeforesym().equals("*")||getbeforesym().equals("/")||getbeforesym().equals("%")){
                     AstNode tmp1=a.changeNode();
                     AstNode b1 =new AstNode("<MulExp>");
                     b1.addNode(tmp1);
