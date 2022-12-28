@@ -50,6 +50,10 @@
     - [11.函数2（Lab8-2）](#11函数2lab8-2)
   - [7.测试样例](#7测试样例)
   - [8.总结感想](#8总结感想)
+  - [附录 期末考试解析](#附录-期末考试解析)
+    - [1.题目说明](#1题目说明-1)
+    - [2.int i = getint();的实现](#2int-i--getint的实现)
+    - [3.bitand](#3bitand)
 
 <!-- /TOC -->
 
@@ -3026,3 +3030,145 @@ v205:
 同时，对于编译器的理解也是十分有帮助的，例如，编译器的前端部分，词法分析，语法分析，语义分析，中间代码生成，后端部分，代码优化，代码生成，这些都是编译器的基本组成部分，对于编译器的理解，这些部分都是十分重要的。在这次编译实验中，我也是通过这些部分的实现，对编译器的理解更加深刻了。
 
 最后，感谢老师和助教的辛勤付出，让本次编译实验能够如此顺利的进行。
+
+## 附录 期末考试解析
+2022年期末考试在线上举行，编码部分一共 **`20分钟`** 完成，主要还是考察了 **`代码生成`** 的一些小修改。应该总体来说还是非常简单的。
+
+### 1.题目说明
+
+- 新增文法：
+  - VarDef → Ident `=` `getint``(``)`
+- 修改文法：**按位与 `bitand`**
+  - MulExp → UnaryExp | MulExp (`*`|`/`|`%`| **`bitand`** ) UnaryExp
+- 说明：
+  - 变量定义时，**只可能** 是一个普通int变量定义，不会出现数组变量赋值，如`int a[10] = getint();`这种情况。
+  - 按位与的运算符号 **&** 被替换为了关键字 **bitand** 。**特别注意**其运算优先级与 **乘除模** 同级，与C/Java 不同。例如 **a + b bitand c * d** 的中间代码为
+  ```
+  t1 = b bitand c
+  t2 = t1 * d
+  t3 = a + t2
+  ```
+  - **常量表达式 `ConstExp`** 的计算中不会出现按位与运算，例如 **const int p = N bitand M** 和 **int a[N bitand M]** （其中M和N为常量）这些是不合法的。
+  - 新增语法规则中，bitand为**保留关键字**，即测试样例不会出现 **ident为bitand** 的情况。
+  - **int i=getint();** 等价于 **int i; 与 i=getint();** 两条语句。
+  - **a bitand b** 运算效果等价于C/Java中的 **a & b** 。
+  - 提示：按位与运算可以用 **`and`** 指令实现，其格式与 **`add`** 等指令相同。
+
+- 测试样例
+```c
+int main()
+{
+	int i = getint(), j = getint();
+	printf("%d", i bitand j);
+	return 0;
+}
+```
+- 样例输入
+```c
+5
+9
+```
+- 样例输出
+```c
+1
+```
+- 样例说明
+```c
+// i = 5(00000101), j = 9(00001001)
+// 按位与结果为 1(00000001)
+```
+- 评分标准
+  - **C级样例**
+    - testfile1-3 不涉及新增文法
+    - testfile4-5 仅增加了形如 **int i=getint();** 内容
+    - testfile6-7 仅增加了**bitand**内容
+  - **B级样例**
+    - testfile8   不涉及新增文法
+    - testfile9   仅增加形如 **int i=getint();** 内容
+    - testfile10  仅增加了**bitand**内容
+    - testfile11  增加全部两项内容
+  - **A级样例**
+    - testfile12  不涉及新增文法
+    - testfile13  仅增加形如 **int i=getint();** 内容
+    - testfile14  仅增加了**bitand**内容
+    - testfile15  增加全部两项内容
+
+### 2.int i = getint();的实现
+- 吐槽1：开局15个点送5个点
+- 吐槽2：古早的软院教程其实有这个文法
+- 吐槽3：官方的注意事项已经告诉我们把它拆成两句来看。
+
+这个实现之所以简单，一是人人都能看懂，二是不涉及任何新的词法。所以直接从语法分析的**递归下降子程序**开始改起。
+
+```java
+public void VarDef(AstNode ast){
+    AstNode a =new AstNode("<VarDef>");
+    if(isIdent(sym)){nextsym(a);
+        while(sym.equals("[")){nextsym(a);ConstExp(a);
+            if(sym.equals("]")){nextsym(a);}
+            else{}
+        }
+        if(sym.equals("=")){nextsym(a);
+
+            if(sym.equals("getint")){nextsym(a);
+                if(sym.equals("(")){nextsym(a);
+                    if(sym.equals(")")){nextsym(a);}
+                }
+            }
+
+            else{InitVal(a);}}
+    }
+    else{}
+    ast.addNode(a);
+    output("<VarDef>");
+}
+```
+接下来就是**代码生成**的修改，正如其描述的，只要将其分成**两句**即可。
+
+```java
+else if(a.size()==5){//很惊喜，size=5，和其他文法一个都没冲突
+    output(tags()+"%v"+this.regId+" = alloca i32\n");//分配空间
+    ident.setValue("%v"+this.regId);
+    ident.setRegId("%v"+this.regId);
+    this.regId++;
+    k.setDim(0);//设置维度
+
+    output(tags()+"%v"+this.regId+" = call i32 @getint()"+"\n");//执行getint()
+    output(tags()+"store i32 "+"%v"+this.regId+", i32* %v"+(this.regId-1)+"\n");
+    this.regId++;
+        }
+```
+真没啥好说的，前后找两段直接 **Ctrl+C/Ctrl+V** 就做好了。
+
+### 3.bitand
+由于添加关键字，所以先去找词法分析的地方，添加关键字 **`bitand`** 。
+
+```java
+ReservedWords.put("bitand","BITANDTK");
+```
+然后到语法分析，**Ctrl+F** 搜索 **`%`** ，**`*`**，**`/`**，有这仨的地方再加一个 **`bitand`** 即可。
+
+最后是代码生成。由于 **`AddMulExp`** 中，我们发现我们已经写过了如下代码：
+```java
+String op=a.get(i).getContent();
+generate(a.get(i+1));
+String right=a.get(i+1).getValue();
+String opt=Operator(op);
+if(level>0){
+    output(tags()+"%v"+this.regId+" = "+opt+" i32 "+left+", "+right+"\n");
+    a.get(i+1).setRegId("%v"+this.regId);
+    a.get(i+1).setValue("%v"+this.regId);
+    this.regId++;
+}
+else{
+    a.get(i+1).setValue(mathCalculate(left,op,right));
+}
+```
+所以我们只需要在 **`Operator`** 函数和 **`mathCalculate`** 函数中添加 **`bitand`** 的处理即可。
+
+```java
+case "bitand": opt="and";break;//Operator里加一行
+case "bitand":ans=a&b;break;//mathCalculate里加一行
+```
+
+至此，期末考试编码部分完成。

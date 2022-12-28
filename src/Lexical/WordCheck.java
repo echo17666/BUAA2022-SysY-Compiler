@@ -19,6 +19,7 @@ public class WordCheck{
         ReservedWords.put("printf","PRINTFTK");
         ReservedWords.put("return","RETURNTK");
         ReservedWords.put("void","VOIDTK");
+        ReservedWords.put("bitand","BITANDTK");
     }
 
     public void output(){

@@ -393,6 +393,16 @@ public class Generator{
                 }
             }
         }
+        else if(a.size()==5){
+            output(tags()+"%v"+this.regId+" = alloca i32\n");
+            ident.setValue("%v"+this.regId);
+            ident.setRegId("%v"+this.regId);
+            this.regId++;
+            k.setDim(0);
+            output(tags()+"%v"+this.regId+" = call i32 @getint()"+"\n");
+            output(tags()+"store i32 "+"%v"+this.regId+", i32* %v"+(this.regId-1)+"\n");
+            this.regId++;
+        }
         ident.setKey(k);
         if(level==0){
             global.put(ident.getContent(),ident);
@@ -1075,6 +1085,7 @@ public class Generator{
             case "*": opt="mul";break;
             case "/": opt="sdiv";break;
             case "%": opt="srem";break;
+            case "bitand": opt="and";break;
             case "==": opt="eq";break;
             case "!=": opt="ne";break;
             case ">": opt="sgt";break;
@@ -1096,6 +1107,7 @@ public class Generator{
             case "*":ans=a*b;break;
             case "/":ans=a/b;break;
             case "%":ans=a%b;break;
+            case "bitand":ans=a&b;break;
             case "==": ans=(a==b)?1:0;break;
             case "!=": ans=(a!=b)?1:0;break;
             case ">": ans=(a>b)?1:0;break;
