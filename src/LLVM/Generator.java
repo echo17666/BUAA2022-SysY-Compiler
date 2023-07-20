@@ -41,6 +41,7 @@ public class Generator{
         else if(ast.getContent().equals("<MainFuncDef>")){MainFuncDef(ast);}
         else if(ast.getContent().equals("<Block>")){Block(ast);}
         else if(ast.getContent().equals("<Stmt>")){Stmt(ast);}
+        else if(ast.getContent().equals("<forStmt>")){forStmt(ast);}
         else if(ast.getContent().equals("<Number>")){Number1(ast);}
         else if(ast.getContent().equals("<Exp>")){Exp(ast);}
         else if(ast.getContent().equals("<Cond>")){Cond(ast);}
@@ -626,6 +627,65 @@ public class Generator{
             generate(a.get(4));
             output("\nv"+StmtId+":\n");
         }
+        else if(a.get(0).getContent().equals("for")){
+            output(tags()+"br label %v"+this.regId+"\n");
+            output("\nv"+this.regId+":\n");
+            int count=0;
+            int CondId=this.regId+1;
+            int YesId=this.regId+2;
+            int NoId=this.regId+3;
+            int StmtId=this.regId+4;
+            this.regId+=5;
+            int for2=0;
+            int i=0;
+            boolean hasForStmt=false;
+            boolean hasCond=false;
+            for(;i<a.size();i++){
+                if(count>=2){break;}
+                if(a.get(i).getContent().equals(";")){count+=1;}
+                if(a.get(i).getContent().equals("<forStmt>")){
+                    hasForStmt=true;
+                    a.get(i).setStmtId(CondId);
+                    generate(a.get(i));
+
+                }
+                if(a.get(i).getContent().equals("<Cond>")){
+                    output("\nv"+CondId+":\n");
+                    hasCond=true;
+                    a.get(i).setYesId(YesId);
+                    a.get(i).setNoId(NoId);
+                    a.get(i).setStmtId(CondId);
+                    generate(a.get(i));
+                }
+                if(count==1&&!hasForStmt){
+                    output(tags()+"br label %v"+CondId+"\n");
+                }
+                if(count==2&&!hasCond){
+                    output("\nv"+CondId+":\n");
+                    output(tags()+"br label %v"+YesId+"\n");
+                }
+            }
+            for(;i<a.size();i++){
+                if(a.get(i).getContent().equals("<forStmt>")){for2=i;}
+                if(a.get(i).getContent().equals("<Stmt>")){
+                    output("\nv"+YesId+":\n");
+                    a.get(i).setStmtId(StmtId);
+                    a.get(i).setBreakId(NoId);
+                    a.get(i).setContinueId(StmtId);
+                    generate(a.get(i));
+                }
+            }
+            output("\nv"+StmtId+":\n");
+            if(for2==0){
+                output(tags()+"br label %v"+CondId+"\n");
+            }
+            else{
+                a.get(for2).setStmtId(CondId);
+                generate(a.get(for2));
+            }
+            output("\nv"+NoId+":\n");
+
+        }
         else if(a.get(0).getContent().equals("break")){
             ast.setStmtId(ast.getBreakId());
         }
@@ -633,6 +693,13 @@ public class Generator{
         if(ast.getStmtId()!=0){
             output(tags()+"br label %v"+ast.getStmtId()+"\n");
         }
+    }
+    public void forStmt(AstNode ast){
+        ArrayList<AstNode> a=ast.getChild();
+        generate(a.get(0));//LVal
+        generate(a.get(2));//Exp
+        output(tags()+"store i32 "+a.get(2).getValue()+", i32* "+a.get(0).getRegId()+"\n");
+        output(tags()+"br label %v"+ast.getStmtId()+"\n");
     }
     public void LVal(AstNode ast){
         ArrayList<AstNode> a=ast.getChild();

@@ -15,6 +15,7 @@ public class WordCheck{
         ReservedWords.put("if","IFTK");
         ReservedWords.put("else","ELSETK");
         ReservedWords.put("while","WHILETK");
+        ReservedWords.put("for","FORTK");
         ReservedWords.put("getint","GETINTTK");
         ReservedWords.put("printf","PRINTFTK");
         ReservedWords.put("return","RETURNTK");

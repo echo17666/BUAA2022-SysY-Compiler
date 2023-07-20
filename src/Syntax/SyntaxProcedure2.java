@@ -26,6 +26,7 @@ public class SyntaxProcedure2{
         ReservedCharacter.put("if","IFTK");
         ReservedCharacter.put("else","ELSETK");
         ReservedCharacter.put("while","WHILETK");
+        ReservedCharacter.put("for","FORTK");
         ReservedCharacter.put("getint","GETINTTK");
         ReservedCharacter.put("printf","PRINTFTK");
         ReservedCharacter.put("return","RETURNTK");
@@ -255,7 +256,7 @@ public class SyntaxProcedure2{
         AstNode a =new AstNode("<Block>");
         if(sym.equals("{")){nextsym(a);
             while(sym.equals("const")||sym.equals("int")||isIdent(sym)||sym.equals(";")||sym.equals("if")||sym.equals("while")||sym.equals("break")||sym.equals("continue")||sym.equals("return")||sym.equals("printf")||
-                    sym.equals("{")||sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isNumber(sym)){BlockItem(a);}
+                    sym.equals("{")||sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isNumber(sym)||sym.equals("for")){BlockItem(a);}
             if(sym.equals("}")){nextsym(a);}
             else{}
         }
@@ -269,7 +270,7 @@ public class SyntaxProcedure2{
             else{VarDecl(ast);}
         }
         else if(isIdent(sym)||sym.equals(";")||sym.equals("if")||sym.equals("while")||sym.equals("continue")||sym.equals("break")||sym.equals("return")||sym.equals("printf")||
-                sym.equals("{")||sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isNumber(sym)){Stmt(ast);}
+                sym.equals("{")||sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isNumber(sym)||sym.equals("for")){Stmt(ast);}
         else{}
     }
     public void Stmt(AstNode ast){
@@ -295,6 +296,18 @@ public class SyntaxProcedure2{
                 else{}
             }
             else{}
+        }
+        else if(sym.equals("for")){nextsym(a);
+            if(sym.equals("(")){nextsym(a);
+                if(isIdent(sym)){forStmt(a);}
+                if(sym.equals(";")){nextsym(a);
+                    if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){Cond(a);}
+                    if(sym.equals(";")){nextsym(a);
+                        if(isIdent(sym)){forStmt(a);}
+                        if(sym.equals(")")){nextsym(a);Stmt(a);}
+                    }
+                }
+            }
         }
         else if(sym.equals("break")){nextsym(a);
             if(sym.equals(";")){nextsym(a);}
@@ -349,6 +362,19 @@ public class SyntaxProcedure2{
         else{}
         ast.addNode(a);
         output("<Stmt>");
+    }
+    public void forStmt(AstNode ast){
+        AstNode a = new AstNode("<forStmt>");
+        if(isIdent(sym)){LVal(a);
+            if(sym.equals("=")){nextsym(a);
+                if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){Exp(a);}
+                else{}
+            }
+            else{}
+        }
+        else{}
+        ast.addNode(a);
+        output("<forStmt>");
     }
     public void Exp(AstNode ast){
         AstNode a =new AstNode("<Exp>");

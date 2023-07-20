@@ -23,6 +23,7 @@ public class SyntaxProcedure{
         ReservedCharacter.put("if","IFTK");
         ReservedCharacter.put("else","ELSETK");
         ReservedCharacter.put("while","WHILETK");
+        ReservedCharacter.put("for","FORTK");
         ReservedCharacter.put("getint","GETINTTK");
         ReservedCharacter.put("printf","PRINTFTK");
         ReservedCharacter.put("return","RETURNTK");
@@ -263,6 +264,18 @@ public class SyntaxProcedure{
             }
             else{}
         }
+        else if(sym.equals("for")){nextsym();
+            if(sym.equals("(")){nextsym();
+                if(isIdent(sym)){forStmt();}
+                if(sym.equals(";")){nextsym();
+                    if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){Cond();}
+                    if(sym.equals(";")){nextsym();
+                        if(isIdent(sym)){forStmt();}
+                        if(sym.equals(")")){nextsym();Stmt();}
+                    }
+                }
+            }
+        }
         else if(sym.equals("break")){nextsym();
             if(sym.equals(";")){nextsym();}
             else{}
@@ -315,6 +328,17 @@ public class SyntaxProcedure{
         }
         else{}
         output("<Stmt>");
+    }
+    public void forStmt(){
+        if(isIdent(sym)){LVal();
+            if(sym.equals("=")){nextsym();
+                if(sym.equals("(")||sym.equals("+")||sym.equals("-")||sym.equals("!")||isIdent(sym)||isNumber(sym)){Exp();}
+                else{}
+            }
+            else{}
+        }
+        else{}
+        output("<forStmt>");
     }
     public void Exp(){
         AddExp();
